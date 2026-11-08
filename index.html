@@ -1,1 +1,119 @@
-HTML
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI FaceSwap Call</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #10121b;
+      color: white;
+      text-align: center;
+    }
+    h1 { color: #8b7cff; }
+    .container {
+      max-width: 650px;
+      margin: auto;
+      background: #1b1e2b;
+      padding: 20px;
+      border-radius: 16px;
+    }
+    video, img {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 12px;
+      background: #08090d;
+      margin: 10px auto;
+    }
+    button, input {
+      margin: 10px;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    button {
+      border: none;
+      background: #7867ff;
+      color: white;
+      font-weight: bold;
+    }
+    label { display: block; margin: 15px; }
+    .notice { color: #bdbdca; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI FaceSwap Call</h1>
+    <p>Camera preview and authorized face image setup</p>
+
+    <h3>Your Camera</h3>
+    <video id="camera" autoplay playsinline muted></video>
+
+    <button onclick="startCamera()">Start Camera</button>
+    <button onclick="stopCamera()">Stop Camera</button>
+
+    <h3>Upload an Authorized Face Image</h3>
+    <input type="file" id="faceFile" accept="image/*">
+    <img id="facePreview" alt="Face image preview" hidden>
+
+    <label>
+      <input type="checkbox" id="permission">
+      I have permission to use this person's face.
+    </label>
+
+    <p id="status" class="notice">
+      Camera is stopped. AI face replacement is not connected yet.
+    </p>
+
+    <p class="notice">
+      Any future face replacement must be used with informed consent
+      and clearly disclosed as AI-generated during calls.
+    </p>
+  </div>
+
+  <script>
+    let stream = null;
+
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+
+        document.getElementById("camera").srcObject = stream;
+        document.getElementById("status").textContent =
+          "Camera started. AI face replacement is not connected yet.";
+      } catch (error) {
+        document.getElementById("status").textContent =
+          "Camera access failed. Please allow camera permission.";
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+
+      document.getElementById("camera").srcObject = null;
+      document.getElementById("status").textContent = "Camera stopped.";
+    }
+
+    document.getElementById("faceFile").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+
+      if (file) {
+        const preview = document.getElementById("facePreview");
+        preview.src = URL.createObjectURL(file);
+        preview.hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>
+
