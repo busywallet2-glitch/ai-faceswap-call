@@ -223,12 +223,13 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      const preview = document.getElementById("facePreview");
+      const preview = document.getElementById("preview");;
       preview.src = URL.createObjectURL(file);
       preview.hidden = false;
     });
 
-    loadTracker();
+   loadTracker();
+    
   </script>
 </body>
 </html>
