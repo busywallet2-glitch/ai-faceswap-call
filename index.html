@@ -3,117 +3,232 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI FaceSwap Call</title>
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 20px;
-      font-family: Arial, sans-serif;
       background: #10121b;
       color: white;
+      font-family: Arial, sans-serif;
       text-align: center;
     }
-    h1 { color: #8b7cff; }
     .container {
       max-width: 650px;
       margin: auto;
-      background: #1b1e2b;
       padding: 20px;
+      background: #1b1e2b;
       border-radius: 16px;
     }
-    video, img {
+    h1 { color: #8b7cff; }
+    .camera-box {
+      position: relative;
       width: 100%;
       max-width: 480px;
-      border-radius: 12px;
+      margin: 12px auto;
       background: #08090d;
-      margin: 10px auto;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    video {
+      display: block;
+      width: 100%;
+      transform: scaleX(-1);
+    }
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
     }
     button, input {
-      margin: 10px;
+      margin: 8px;
       padding: 12px;
       border-radius: 8px;
     }
     button {
-      border: none;
+      border: 0;
       background: #7867ff;
       color: white;
       font-weight: bold;
     }
+    img {
+      display: block;
+      max-width: 200px;
+      max-height: 220px;
+      margin: 12px auto;
+      border-radius: 12px;
+    }
     label { display: block; margin: 15px; }
-    .notice { color: #bdbdca; font-size: 14px; }
+    .notice { color: #c5c5d0; font-size: 14px; }
+    #status { color: #a99cff; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>AI FaceSwap Call</h1>
-    <p>Camera preview and authorized face image setup</p>
+    <p>Camera and facial tracking test</p>
 
     <h3>Your Camera</h3>
-    <video id="camera" autoplay playsinline muted></video>
+    <div class="camera-box">
+      <video id="camera" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
 
-    <button onclick="startCamera()">Start Camera</button>
-    <button onclick="stopCamera()">Stop Camera</button>
+    <button id="start">Start Camera</button>
+    <button id="stop">Stop Camera</button>
 
     <h3>Upload an Authorized Face Image</h3>
     <input type="file" id="faceFile" accept="image/*">
-    <img id="facePreview" alt="Face image preview" hidden>
+    <img id="facePreview" alt="Uploaded face preview" hidden>
 
     <label>
       <input type="checkbox" id="permission">
       I have permission to use this person's face.
     </label>
 
-    <p id="status" class="notice">
-      Camera is stopped. AI face replacement is not connected yet.
-    </p>
+    <p id="status">Loading facial tracking engine...</p>
 
     <p class="notice">
-      Any future face replacement must be used with informed consent
-      and clearly disclosed as AI-generated during calls.
+      This page tracks facial landmarks only. It does not yet
+      replace faces or connect to video calling apps.
+      AI-generated video must be disclosed to call participants.
     </p>
   </div>
 
-  <script>
-    let stream = null;
+  <script type="module">
+    import {
+      FaceLandmarker,
+      FilesetResolver
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-    async function startCamera() {
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+    const status = document.getElementById("status");
+
+    let stream = null;
+    let landmarker = null;
+    let running = false;
+    let lastDetection = 0;
+
+    async function loadTracker() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+        );
+
+        landmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "CPU"
+          },
+          runningMode: "VIDEO",
+          numFaces: 1
         });
 
-        document.getElementById("camera").srcObject = stream;
-        document.getElementById("status").textContent =
-          "Camera started. AI face replacement is not connected yet.";
+        status.textContent = "Facial tracking engine ready.";
       } catch (error) {
-        document.getElementById("status").textContent =
-          "Camera access failed. Please allow camera permission.";
+        status.textContent =
+          "Could not load facial tracking. Check your internet connection and reload.";
+        console.error(error);
       }
     }
 
-    function stopCamera() {
+    function trackFace() {
+      if (!running) return;
+
+      if (video.readyState >= 2 && landmarker) {
+        const now = performance.now();
+
+        if (now - lastDetection > 66) {
+          lastDetection = now;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          try {
+            const result = landmarker.detectForVideo(video, now);
+            const faces = result.faceLandmarks;
+
+            if (faces && faces.length > 0) {
+              const points = faces[0];
+              ctx.fillStyle = "#9d8cff";
+
+              for (const point of points) {
+                ctx.beginPath();
+                ctx.arc(
+                  (1 - point.x) * canvas.width,
+                  point.y * canvas.height,
+                  1.5,
+                  0,
+                  Math.PI * 2
+                );
+                ctx.fill();
+              }
+
+              status.textContent =
+                "Face detected! Tracking your facial movements.";
+            } else {
+              status.textContent = "Looking for a face...";
+            }
+          } catch (error) {
+            status.textContent = "Tracking error. Please restart the camera.";
+          }
+        }
+      }
+
+      requestAnimationFrame(trackFace);
+    }
+
+    document.getElementById("start").addEventListener("click", async () => {
+      if (!landmarker) {
+        status.textContent = "Facial tracker is still loading. Please wait.";
+        return;
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+
+        video.srcObject = stream;
+        await video.play();
+        running = true;
+        requestAnimationFrame(trackFace);
+      } catch (error) {
+        status.textContent = "Camera access failed. Please allow camera permission.";
+      }
+    });
+
+    document.getElementById("stop").addEventListener("click", () => {
+      running = false;
+
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
       }
 
-      document.getElementById("camera").srcObject = null;
-      document.getElementById("status").textContent = "Camera stopped.";
-    }
-
-    document.getElementById("faceFile").addEventListener("change", function(event) {
-      const file = event.target.files[0];
-
-      if (file) {
-        const preview = document.getElementById("facePreview");
-        preview.src = URL.createObjectURL(file);
-        preview.hidden = false;
-      }
+      video.srcObject = null;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      status.textContent = "Camera stopped.";
     });
+
+    document.getElementById("faceFile").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const preview = document.getElementById("facePreview");
+      preview.src = URL.createObjectURL(file);
+      preview.hidden = false;
+    });
+
+    loadTracker();
   </script>
 </body>
 </html>
-
