@@ -21,11 +21,13 @@ The project is **not connected to any calling service**. GitHub Pages hosts stat
 
 ## Target integration order
 
-1. **WhatsApp Desktop first.** Build and test a desktop companion that exposes an explicitly selected processed camera feed as a camera device, then select that device in WhatsApp Desktop. WhatsApp Desktop supports video calls and camera access on supported computers.
-2. **Signal Desktop second.** Reuse the same companion camera output where Signal Desktop and the operating system enumerate it as an available camera. Signal Desktop provides a camera selector in call settings.
-3. **Android apps later, only if technically supported.** A normal mobile webpage cannot simply replace the camera feed inside other Android apps. This would require a separate Android-native approach and careful compatibility testing; do not promise this feature until it has been demonstrated on real devices.
+1. **WhatsApp Desktop first.** Build and test a desktop companion that exposes an explicitly selected processed camera feed as a camera device.
+2. **Signal Desktop second.** Reuse the same companion camera output where Signal Desktop and the operating system enumerate it as an available camera.
+3. **Android apps later, only if technically supported.** A normal mobile webpage cannot replace the camera feed inside other Android apps. This requires a separate Android-native approach and real-device testing.
 
 The desktop route is the practical first target. It requires a Windows or macOS computer for development and end-to-end testing; the current GitHub Pages page alone cannot create a system-wide virtual camera.
+
+See [DESKTOP_INTEGRATION.md](DESKTOP_INTEGRATION.md) for the OBS Virtual Camera proof-of-concept plan and release gates.
 
 ## How to try the current prototype
 
@@ -46,13 +48,16 @@ A secure HTTPS page is required for camera access. A stable internet connection 
 - The browser preview is local, but camera and uploaded-photo data may still be handled by the browser and the third-party CDN/model services used to load the application. Review those providers' privacy terms before sensitive use.
 - Stop the camera when you are done.
 
+## Quality checks
+
+A GitHub Actions workflow runs a Node.js smoke test on pushes and pull requests. The test checks that core camera, tracking, permission-gating, and camera-stop features remain present. It is a structural smoke test, not a substitute for visual or end-to-end device testing.
+
 ## Remaining work before a real video-call release
 
-- Improve face masking, color matching, edge blending, and temporal stabilization.
+- Improve face segmentation, color matching, edge blending, and temporal stabilization.
 - Test performance and reliability on target devices.
-- Build a desktop companion and a supported virtual-camera output for WhatsApp Desktop.
-- Verify that Signal Desktop can select and use the same camera output; implement a separate compatibility path if needed.
-- Add automated checks and clear handling for unsupported devices, model-loading failures, and camera errors.
+- Build a desktop companion and supported virtual-camera output for WhatsApp Desktop.
+- Verify Signal Desktop compatibility with the same camera output.
 - Complete privacy, security, consent, disclosure, and abuse-prevention reviews.
 - Test end-to-end with consenting participants before describing the app as ready for calls.
 
