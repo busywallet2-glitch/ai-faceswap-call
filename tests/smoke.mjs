@@ -24,7 +24,10 @@ const required = [
   'id="clearFaceButton"',
   "function clearUploadedFace()",
   "10 * 1024 * 1024",
-  "clearFaceButton.addEventListener"
+  "clearFaceButton.addEventListener",
+  "let imageLoadToken = 0",
+  "const currentLoadToken = ++imageLoadToken",
+  "currentLoadToken !== imageLoadToken"
 ];
 
 for (const item of required) {
