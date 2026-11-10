@@ -15,7 +15,11 @@ const required = [
   "FaceLandmarker.createFromOptions",
   "detectForVideo",
   "getUserMedia",
-  "pagehide"
+  "pagehide",
+  'id="clearFaceButton"',
+  "function clearUploadedFace()",
+  "10 * 1024 * 1024",
+  "clearFaceButton.addEventListener"
 ];
 
 for (const item of required) {
@@ -33,6 +37,15 @@ assert.ok(
 assert.ok(
   /audio:\s*false/.test(html),
   "The camera capture must not request microphone audio."
+);
+
+assert.ok(
+  /permission\.checked = false/.test(html),
+  "Selecting or removing an image must reset the consent confirmation."
+);
+assert.ok(
+  /URL\.revokeObjectURL\(photoUrl\)/.test(html),
+  "Replacing or removing an uploaded image must release its object URL."
 );
 
 console.log("Face Tracking Studio smoke tests passed.");
