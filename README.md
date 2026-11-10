@@ -17,9 +17,17 @@ A browser-based prototype for consent-based face landmark tracking and experimen
 
 This is **not yet a realistic, production-ready face-swap system**. The current overlay is a basic landmark/triangle warp. It can look distorted, especially with head turns, different lighting, facial expressions, hair, glasses, or occlusions. It does not guarantee a natural blend.
 
-The project is **not connected to Zoom, Google Meet, WhatsApp, Teams, or any other calling service**. GitHub Pages hosts static files; it does not provide the inference server or WebRTC signaling service needed for a dependable virtual camera/call integration.
+The project is **not connected to any calling service**. GitHub Pages hosts static files; it does not provide the processing service or camera-device integration needed for dependable video calls.
 
-## How to try it
+## Target integration order
+
+1. **WhatsApp Desktop first.** Build and test a desktop companion that exposes an explicitly selected processed camera feed as a camera device, then select that device in WhatsApp Desktop. WhatsApp Desktop supports video calls and camera access on supported computers.
+2. **Signal Desktop second.** Reuse the same companion camera output where Signal Desktop and the operating system enumerate it as an available camera. Signal Desktop provides a camera selector in call settings.
+3. **Android apps later, only if technically supported.** A normal mobile webpage cannot simply replace the camera feed inside other Android apps. This would require a separate Android-native approach and careful compatibility testing; do not promise this feature until it has been demonstrated on real devices.
+
+The desktop route is the practical first target. It requires a Windows or macOS computer for development and end-to-end testing; the current GitHub Pages page alone cannot create a system-wide virtual camera.
+
+## How to try the current prototype
 
 1. Open the live demo in a modern browser.
 2. Allow camera access when prompted.
@@ -41,10 +49,10 @@ A secure HTTPS page is required for camera access. A stable internet connection 
 ## Remaining work before a real video-call release
 
 - Improve face masking, color matching, edge blending, and temporal stabilization.
-- Test performance and reliability on target Android devices and desktop browsers.
+- Test performance and reliability on target devices.
+- Build a desktop companion and a supported virtual-camera output for WhatsApp Desktop.
+- Verify that Signal Desktop can select and use the same camera output; implement a separate compatibility path if needed.
 - Add automated checks and clear handling for unsupported devices, model-loading failures, and camera errors.
-- Decide which calling platform(s) to support first.
-- Build and secure a separate WebRTC/signaling and processing service, or a supported virtual-camera integration; static GitHub Pages alone cannot provide this.
 - Complete privacy, security, consent, disclosure, and abuse-prevention reviews.
 - Test end-to-end with consenting participants before describing the app as ready for calls.
 
