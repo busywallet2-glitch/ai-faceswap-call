@@ -96,6 +96,7 @@
     let animationFrame = null;
     let lastVideoTime = -1;
     let photoUrl = null;
+    let imageLoadToken = 0;
 
     function withTimeout(promise, milliseconds, message) {
       let timeoutId;
@@ -246,6 +247,7 @@
     }
 
     function clearUploadedFace() {
+      imageLoadToken += 1;
       uploadedFace = null;
       sourcePoints = null;
       triangles = null;
@@ -278,14 +280,21 @@
       uploadedFace = null;
       sourcePoints = null;
       triangles = null;
+      const currentLoadToken = ++imageLoadToken;
       try {
         await loadTrackers();
+        if (currentLoadToken !== imageLoadToken) return;
         if (photoUrl) URL.revokeObjectURL(photoUrl);
-        photoUrl = URL.createObjectURL(file);
+        const imageObjectUrl = URL.createObjectURL(file);
+        photoUrl = imageObjectUrl;
         const image = new Image();
         image.onload = () => {
+          if (currentLoadToken !== imageLoadToken) {
+            URL.revokeObjectURL(imageObjectUrl);
+            return;
+          }
           uploadedFace = image;
-          facePreview.src = photoUrl;
+          facePreview.src = imageObjectUrl;
           facePreview.style.display = "block";
           clearFaceButton.disabled = false;
           const result = imageLandmarker.detect(image);
@@ -300,11 +309,12 @@
           status.textContent = "Photo loaded and face landmarks found. Confirm permission to preview.";
         };
         image.onerror = () => {
+          if (currentLoadToken !== imageLoadToken) return;
           status.textContent = "The image could not be loaded.";
-          URL.revokeObjectURL(photoUrl);
-          photoUrl = null;
+          URL.revokeObjectURL(imageObjectUrl);
+          if (photoUrl === imageObjectUrl) photoUrl = null;
         };
-        image.src = photoUrl;
+        image.src = imageObjectUrl;
       } catch (error) {
         console.error(error);
         status.textContent = `Could not analyze that photo: ${error?.message || "Check your connection and try again."}`;
