@@ -53,6 +53,7 @@
   <div class="panel">
     <h2>Upload an Authorized Face Image</h2>
     <input type="file" id="faceFile" accept="image/*">
+    <button id="clearFaceButton" type="button" disabled>Remove Uploaded Image</button>
     <img id="facePreview" alt="Uploaded face preview">
     <label>
       <input type="checkbox" id="permission">
@@ -79,6 +80,7 @@
     const stopButton = document.getElementById("stopButton");
     const faceFile = document.getElementById("faceFile");
     const facePreview = document.getElementById("facePreview");
+    const clearFaceButton = document.getElementById("clearFaceButton");
     const permission = document.getElementById("permission");
     const showSwap = document.getElementById("showSwap");
     const status = document.getElementById("status");
@@ -131,8 +133,8 @@
         detectFace();
       } catch (error) {
         console.error(error);
+        stopCamera();
         status.textContent = "Could not start. Check your internet connection and camera permission, then try again.";
-        startButton.disabled = false;
       }
     }
 
@@ -217,13 +219,39 @@
       status.textContent = "Camera is stopped.";
     }
 
+    function clearUploadedFace() {
+      uploadedFace = null;
+      sourcePoints = null;
+      triangles = null;
+      permission.checked = false;
+      faceFile.value = "";
+      facePreview.removeAttribute("src");
+      facePreview.style.display = "none";
+      clearFaceButton.disabled = true;
+      if (photoUrl) URL.revokeObjectURL(photoUrl);
+      photoUrl = null;
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      status.textContent = "Uploaded image removed. Camera tracking can continue."; 
+    }
+
     faceFile.addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
       if (!file.type.startsWith("image/")) {
         status.textContent = "Please choose an image file.";
+        faceFile.value = "";
         return;
       }
+      if (file.size > 10 * 1024 * 1024) {
+        status.textContent = "Please choose an image smaller than 10 MB.";
+        faceFile.value = "";
+        return;
+      }
+      permission.checked = false;
+      uploadedFace = null;
+      sourcePoints = null;
+      triangles = null;
       try {
         await loadTrackers();
         if (photoUrl) URL.revokeObjectURL(photoUrl);
@@ -233,6 +261,7 @@
           uploadedFace = image;
           facePreview.src = photoUrl;
           facePreview.style.display = "block";
+          clearFaceButton.disabled = false;
           const result = imageLandmarker.detect(image);
           if (!result.faceLandmarks.length) {
             sourcePoints = null;
@@ -267,6 +296,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     });
+    clearFaceButton.addEventListener("click", clearUploadedFace);
     startButton.addEventListener("click", startCamera);
     stopButton.addEventListener("click", stopCamera);
     window.addEventListener("pagehide", stopCamera);
