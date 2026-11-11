@@ -16,6 +16,11 @@
       position: relative; width: 100%; max-width: 640px; margin: 18px auto;
       background: #000; border-radius: 14px; overflow: hidden; min-height: 220px;
     }
+    #cameraPlaceholder {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      padding: 24px; color: #d1d5db; font-size: 15px; line-height: 1.5;
+      pointer-events: none;
+    }
     video, canvas { display: block; width: 100%; height: auto; }
     video { transform: scaleX(-1); }
     canvas { position: absolute; inset: 0; transform: scaleX(-1); }
@@ -43,6 +48,7 @@
   <p>Track your face and preview a consent-based face image alignment.</p>
 
   <div class="camera-box">
+    <div id="cameraPlaceholder" role="status">Camera is off. Tap “Start Camera” to begin.</div>
     <video id="camera" autoplay playsinline muted></video>
     <canvas id="overlay"></canvas>
   </div>
@@ -86,6 +92,12 @@
     const permission = document.getElementById("permission");
     const showSwap = document.getElementById("showSwap");
     const status = document.getElementById("status");
+    const cameraPlaceholder = document.getElementById("cameraPlaceholder");
+
+    function setCameraPlaceholder(message) {
+      cameraPlaceholder.textContent = message;
+      cameraPlaceholder.style.display = "grid";
+    }
 
     let videoLandmarker = null;
     let imageLandmarker = null;
@@ -142,6 +154,7 @@
     async function startCamera() {
       try {
         startButton.disabled = true;
+        setCameraPlaceholder("Preparing camera and loading face-tracking models...");
         status.textContent = "Starting camera and loading models...";
         await loadTrackers();
         cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -153,6 +166,7 @@
           else video.onloadedmetadata = resolve;
         });
         await video.play();
+        cameraPlaceholder.style.display = "none";
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         stopButton.disabled = false;
@@ -161,6 +175,7 @@
       } catch (error) {
         console.error(error);
         stopCamera();
+        setCameraPlaceholder("Camera preview is unavailable. Check your internet connection and camera permission, then try again.");
         status.textContent = `Could not start: ${error?.message || "Check your internet connection and camera permission, then try again."}`;
       }
     }
@@ -239,6 +254,7 @@
       if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
       cameraStream = null;
       video.srcObject = null;
+      setCameraPlaceholder("Camera is off. Tap “Start Camera” to begin.");
       ctx.setTransform(1,0,0,1,0,0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       startButton.disabled = false;
