@@ -5,6 +5,9 @@ const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 const required = [
   'id="camera"',
+  'id="cameraPlaceholder"',
+  "Camera is off. Tap",
+  "function setCameraPlaceholder(message)",
   'id="overlay"',
   'id="startButton"',
   'id="stopButton"',
