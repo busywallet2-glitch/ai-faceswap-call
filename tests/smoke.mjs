@@ -68,7 +68,7 @@ assert.ok(
   "The stop-camera flow must stop media tracks."
 );
 assert.ok(
-  /audio:\\s*\\{\\s*echoCancellation:\\s*true/.test(html),
+  /audio:\s*\{\s*echoCancellation:\s*true/.test(html),
   "The camera capture must request the microphone with echo cancellation for calling."
 );
 
