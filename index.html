@@ -950,6 +950,7 @@
       lastPoseLandmarks = null;
       lastPoseDetectionTime = 0;
       smoothedFaceLandmarks = null;
+      bodyFrameStatus.textContent = "Enable body tracking to check whether your full body is in frame.";
       if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
       cameraStream = null;
       video.srcObject = null;
