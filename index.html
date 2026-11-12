@@ -460,13 +460,14 @@
         bodyFrameStatus.textContent = "No full body detected yet. Stand farther back and keep your head and feet visible.";
         return;
       }
-      const required = [0,11,12,23,24,27,28];
+      const required = [0,11,12,23,24,27,28,31,32];
       const visible = required.every(index => {
         const point = landmarks[index];
         if (!point) return false;
         const confidence = Number.isFinite(point.visibility) ? point.visibility
           : Number.isFinite(point.presence) ? point.presence : 1;
-        return confidence >= 0.45 && point.x >= 0.01 && point.x <= 0.99 &&
+        const minimumConfidence = index >= 27 ? 0.25 : 0.4;
+        return confidence >= minimumConfidence && point.x >= 0.01 && point.x <= 0.99 &&
           point.y >= 0.01 && point.y <= 0.99;
       });
       bodyFrameStatus.textContent = visible
