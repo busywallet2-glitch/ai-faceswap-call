@@ -1748,7 +1748,7 @@
         "",
         "[benchmark]",
         "benchmark_mode = " + engineValue("benchmarkMode"),
-        "benchmark_resolutions = " + engineValue("benchmarkResolutions"),
+        "benchmark_resolutions = " + Array.from(document.getElementById("benchmarkResolutions").selectedOptions).map(option => option.value).join(" "),
         "benchmark_cycle_count = " + engineNumber("benchmarkCycles",1,10),
         "",
         "[misc]",
