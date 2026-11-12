@@ -30,7 +30,29 @@ const required = [
   "clearFaceButton.addEventListener",
   "let imageLoadToken = 0",
   "const currentLoadToken = ++imageLoadToken",
-  "currentLoadToken !== imageLoadToken"
+  "currentLoadToken !== imageLoadToken",
+'id="voiceEffect"',
+  'id="translationConsent"',
+  'id="targetLanguage"',
+  'id="startTranslationButton"',
+  'id="stopTranslationButton"',
+  'id="englishCaption"',
+  'id="translatedCaption"',
+  'id="callButton"',
+  'id="answerButton"',
+  "function applyVoiceEffect()",
+  '"female-soft"',
+  '"male-deep"',
+  "function translateEnglishCaption(text)",
+  "api.mymemory.translated.net",
+  "function startEnglishCaptions()",
+  "Please agree before sending recognized speech text for translation.",
+  "function connectCallService()",
+  "https://esm.sh/peerjs@1.5.4",
+  "function closeActiveCall()",
+  "recognition.lang = \"en-US\"",
+  "translationRequestToken"
+
 ];
 
 for (const item of required) {
