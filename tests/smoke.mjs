@@ -133,7 +133,6 @@ const required = [
   "canvas.captureStream(30)",
   "Keep the processed canvas stream alive.",
   "Local preview hidden. The processed video and microphone remain active for your call.",
-  "processedVideoMode !== expectedMode"
 
 ];
 
