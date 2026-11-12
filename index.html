@@ -523,7 +523,10 @@
   <div class="panel">
     <h2>Upload an Authorized Face Image</h2>
     <input type="file" id="faceFile" accept="image/*">
-    <button id="clearFaceButton" type="button" disabled>Remove Uploaded Image</button>
+    <label for="faceAngleFiles">Optional: add up to two side-angle photos of the same person</label>
+    <input type="file" id="faceAngleFiles" accept="image/*" multiple>
+    <p id="faceAngleStatus" class="hint" role="status">A front-facing photo is enough to start. Left/right angle photos help the AI keep the identity more consistent when you turn your head.</p>
+    <button id="clearFaceButton" type="button" disabled>Remove Uploaded Images</button>
     <img id="facePreview" alt="Uploaded face preview">
     <label>
       <input type="checkbox" id="permission">
@@ -680,7 +683,11 @@
     const startButton = document.getElementById("startButton");
     const stopButton = document.getElementById("stopButton");
     const faceFile = document.getElementById("faceFile");
+    const faceAngleFiles = document.getElementById("faceAngleFiles");
+    const faceAngleStatus = document.getElementById("faceAngleStatus");
     const facePreview = document.getElementById("facePreview");
+    let faceAngleImages = [];
+    let faceAngleUrls = [];
     const clearFaceButton = document.getElementById("clearFaceButton");
     const permission = document.getElementById("permission");
     const showSwap = document.getElementById("showSwap");
@@ -1345,9 +1352,17 @@
         if (!detectedFaces.length) throw new Error("No face was detected in the uploaded portrait. Choose a clear photo with one visible face.");
         const selectedFace = detectedFaces[0];
         const qualityNotes = selectedFace.issues.map(issue => ({small:"small face",turned:"side-facing",blurry:"blurry",dark:"dark",bright:"overexposed"}[issue] || issue));
-        await neuralSwap.setIdentity({image:uploadedFace,face:selectedFace});
+        if (faceAngleImages.length) {
+          aiEngineStatus.textContent = "Building multi-angle identity views for more consistent head turns…";
+          const identityImages = [uploadedFace, ...faceAngleImages];
+          const views = await Promise.all(identityImages.map(image => neuralSwap.identityView({image})));
+          await neuralSwap.setIdentity({views});
+        } else {
+          await neuralSwap.setIdentity({image:uploadedFace,face:selectedFace});
+        }
         if (selectedFace.preview) selectedFace.preview.close();
-        aiEngineStats.textContent = qualityNotes.length ? "Portrait quality warning: " + qualityNotes.join(", ") + ". Use a sharp, front-facing, evenly lit photo for best results." : "Portrait quality check passed.";
+        aiEngineStats.textContent = qualityNotes.length ? "Portrait quality warning: " + qualityNotes.join(", ") + ". Use sharp, evenly lit photos with the face clearly visible." : "Portrait quality check passed.";
+        if (faceAngleImages.length) aiEngineStats.textContent += " · " + faceAngleImages.length + " extra angle view(s) loaded.";
         neuralSwapTrack = neuralSwap.process(cameraStream.getVideoTracks()[0],{maxFps:24});
         neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack]);
         neuralOutputVideo.play().catch(error => {
@@ -1668,6 +1683,11 @@
       triangles = null;
       permission.checked = false;
       faceFile.value = "";
+      faceAngleFiles.value = "";
+      faceAngleImages = [];
+      faceAngleUrls.forEach(url => URL.revokeObjectURL(url));
+      faceAngleUrls = [];
+      faceAngleStatus.textContent = "Optional angle photos cleared.";
       facePreview.removeAttribute("src");
       facePreview.style.display = "none";
       clearFaceButton.disabled = true;
@@ -1737,6 +1757,44 @@
       } catch (error) {
         console.error(error);
         status.textContent = `Could not analyze that photo: ${error?.message || "Check your connection and try again."}`;
+      }
+    });
+
+    faceAngleFiles.addEventListener("change", async () => {
+      const files = Array.from(faceAngleFiles.files || []);
+      if (files.length > 2) {
+        faceAngleFiles.value = "";
+        faceAngleStatus.textContent = "Choose no more than two extra angle photos.";
+        return;
+      }
+      if (files.some(file => !file.type.startsWith("image/") || file.size > 10 * 1024 * 1024)) {
+        faceAngleFiles.value = "";
+        faceAngleStatus.textContent = "Each angle photo must be an image smaller than 10 MB.";
+        return;
+      }
+      const token = imageLoadToken;
+      const nextUrls = files.map(file => URL.createObjectURL(file));
+      try {
+        const images = await Promise.all(nextUrls.map(url => new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => reject(new Error("An angle photo could not be loaded."));
+          image.src = url;
+        })));
+        if (token !== imageLoadToken) {
+          nextUrls.forEach(url => URL.revokeObjectURL(url));
+          return;
+        }
+        faceAngleUrls.forEach(url => URL.revokeObjectURL(url));
+        faceAngleUrls = nextUrls;
+        faceAngleImages = images;
+        if (neuralSwap) stopNeuralFaceEngine();
+        faceAngleStatus.textContent = images.length
+          ? images.length + " extra angle photo(s) ready. Use left/right views of the same person for best head-turn consistency."
+          : "No extra angle photos selected.";
+      } catch (error) {
+        nextUrls.forEach(url => URL.revokeObjectURL(url));
+        faceAngleStatus.textContent = error.message || "Could not load angle photos.";
       }
     });
 
