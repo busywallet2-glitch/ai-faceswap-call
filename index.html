@@ -1122,9 +1122,6 @@
           smoothedFaceLandmarks = smoothFaceLandmarks(
             results.faceLandmarks[0], smoothedFaceLandmarks, 0.58
           );
-          if (!(neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2)) {
-            warpFace(smoothedFaceLandmarks);
-          }
           status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
             ? "Neural face replacement is active in the live preview and call output."
             : permission.checked && uploadedFace
@@ -1136,6 +1133,10 @@
         }
       }
 
+      if (smoothedFaceLandmarks &&
+          !(neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2)) {
+        warpFace(smoothedFaceLandmarks);
+      }
       if (showBodyPose.checked && lastPoseLandmarks) drawBodyPose(lastPoseLandmarks);
       animationFrame = requestAnimationFrame(detectFace);
     }
