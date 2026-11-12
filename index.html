@@ -627,6 +627,7 @@
     let neuralSwapTrack = null;
     let neuralSwapModule = null;
     let neuralSwapStarting = false;
+    let processedVideoMode = null;
 
     function withTimeout(promise, milliseconds, message) {
       let timeoutId;
@@ -1185,9 +1186,9 @@
         const hf = "https://huggingface.co/";
         const models = {
           landmarker:{url:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",sha256:KNOWN_SHA256.landmarker},
-          swapperFp16:{url:hf+"facefusion/models-3.0.0/resolve/main/inswapper_128_fp16.onnx",sha256:KNOWN_SHA256.swapperFp16},
-          swapperFp32:{url:hf+"facefusion/models-3.0.0/resolve/main/inswapper_128.onnx",sha256:KNOWN_SHA256.swapperFp32},
-          arcface:{url:hf+"public-data/insightface/resolve/main/models/buffalo_l/w600k_r50.onnx",sha256:KNOWN_SHA256.arcface},
+          swapperFp16:{url:"https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128_fp16.onnx",sha256:KNOWN_SHA256.swapperFp16},
+          swapperFp32:{url:"https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx",sha256:KNOWN_SHA256.swapperFp32},
+          arcface:{url:"https://huggingface.co/ApacheOne/insightface/resolve/main/insightface/models/buffalo_l/w600k_r50.onnx",sha256:KNOWN_SHA256.arcface},
           segmenter:{url:"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite",sha256:KNOWN_SHA256.segmenter}
         };
         neuralSwap = await createFaceSwap({models:models,backend:"auto",
@@ -1222,7 +1223,8 @@
       outputPreview.pause();
       outputPreview.srcObject = null;
       outputPreview.style.display = "none";
-      outputButton.disabled = !cameraStream || typeof canvas.captureStream !== "function";
+      outputButton.disabled = !cameraStream || (!neuralSwapTrack && typeof canvas.captureStream !== "function");
+      processedVideoMode = null;
       stopOutputButton.disabled = true;
     }
 
@@ -1233,14 +1235,15 @@
       }
       try {
         stopProcessedOutput();
-        processedStream = neuralSwapTrack && neuralSwapTrack.readyState === "live"
-          ? new MediaStream([neuralSwapTrack.clone()])
-          : canvas.captureStream(24);
+        const useNeuralTrack = !!(neuralSwapTrack && neuralSwapTrack.readyState === "live");
+        processedStream = useNeuralTrack ? new MediaStream([neuralSwapTrack.clone()]) : canvas.captureStream(24);
+        processedVideoMode = useNeuralTrack ? "neural" : "camera";
         const processedAudio = await buildVoiceTrack();
         if (processedAudio) processedStream.addTrack(processedAudio);
         outputPreview.srcObject = processedStream;
         outputPreview.style.display = "block";
         await outputPreview.play();
+        await syncActiveCallTracks();
         outputButton.disabled = true;
         stopOutputButton.disabled = false;
         status.textContent = "Processed camera output is running in this browser.";
@@ -1250,14 +1253,26 @@
       }
     }
 
+    async function syncActiveCallTracks() {
+      const connection = activeCall && activeCall.peerConnection;
+      if (!connection || !processedStream) return;
+      const senders = connection.getSenders();
+      for (const track of processedStream.getTracks()) {
+        const sender = senders.find(item => item.track && item.track.kind === track.kind);
+        if (sender && sender.track !== track) {
+          try { await sender.replaceTrack(track); }
+          catch (_) { callStatus.textContent = "Output changed. Reconnect the call to use the new camera track."; }
+        }
+      }
+    }
+
     async function ensureProcessedStream() {
       if (!cameraStream) {
         callStatus.textContent = "Start your camera and microphone before calling.";
         return null;
       }
-      if (!processedStream || processedStream.getTracks().every(track => track.readyState !== "live")) {
-        await startProcessedOutput();
-      }
+      const expectedMode = neuralSwapTrack && neuralSwapTrack.readyState === "live" ? "neural" : "camera";
+      if (!processedStream || processedStream.getTracks().every(track => track.readyState !== "live") || processedVideoMode !== expectedMode) await startProcessedOutput();
       return processedStream;
     }
 
