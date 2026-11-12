@@ -30,7 +30,8 @@ A mobile-first, consent-first browser studio with a premium interface, experimen
 - MediaPipe Face Landmarker tracks a face in the camera stream.
 - An experimental neural face-replacement engine uses `browser-inswapper`, ONNX Runtime Web, an InsightFace identity model, and MediaPipe segmentation for face alignment and foreground-aware blending.
 - The neural engine checks GPU capabilities, verifies downloaded model files against SHA-256 fingerprints, reports model download progress and live inference performance, and checks the uploaded portrait for quality issues.
-- When the neural engine is active, processed output and browser calls can use its generated video track; switching the engine attempts to replace the active call's outgoing media tracks.
+
+- The outgoing call video now uses one persistent canvas-capture track. The neural engine's decoded output is composited into that canvas, so turning face replacement on/off does not replace the WebRTC sender track or require reconnecting the call. If neural inference ends, the canvas falls back to the live camera instead of freezing the call.
 - A user can upload a face image, confirm they have permission to use it, and preview experimental landmark/triangle alignment.
 - A full-body framing guide helps position the phone to keep the subject head-to-toe in view.
 - The camera can be switched between front and rear lenses before starting, making it easier to set up a tripod or full-body shot.
@@ -99,7 +100,7 @@ The smoke test parses the browser module for JavaScript syntax and checks that k
 
 ## Remaining engineering work
 
-1. Test the new neural engine end-to-end on supported Android and desktop GPU devices, then improve temporal stabilization and tune quality/performance based on real captures.
+1. Test the stable-canvas neural output path end-to-end on supported Android and desktop GPU devices; tune temporal stabilization, face edges, expressions, lighting and performance using real captures.
 2. Add actual voice conversion only through a suitable model/service with explicit voice-owner consent, latency controls, and clear disclosure.
 3. Build a true speech-to-speech translation pipeline: both participants' speech recognition, translation, speech synthesis, echo prevention, language selection, and routed call audio.
 4. Improve WebRTC reliability with a properly configured TURN service and test network handoff/reconnection.
