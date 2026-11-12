@@ -113,7 +113,16 @@ const required = [
   "neuralSwap.process(cameraStream.getVideoTracks()[0]",
   "sender.replaceTrack(track)",
   "processedVideoMode !== expectedMode",
-  "aiConsent.checked = false"
+  "aiConsent.checked = false",
+  "id=\"engineConsole\"",
+  "id=\"swapModel\"",
+  "id=\"swapPixelBoost\"",
+  "id=\"landmarkerModel\"",
+  "id=\"selectorMode\"",
+  "id=\"executionProvider\"",
+  "id=\"benchmarkMode\"",
+  "function buildEngineIni()",
+  "function engineLaunchCommand(benchmark=false)"
 
 ];
 
