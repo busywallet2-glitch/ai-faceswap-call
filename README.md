@@ -60,7 +60,7 @@ This is an **experimental prototype, not a finished or production-ready face-swa
 - Do not clone or imitate a real person's identifiable voice without that person's explicit permission. Celebrity names are not provided as cloned voice presets.
 - Speech recognition depends on browser support and may use browser-managed online services. Translation sends recognized text to MyMemory. Avoid confidential conversations and review third-party privacy terms.
 - Translation currently produces **text captions only**. It does not synthesize translated speech, route translated audio to the other caller, translate the remote participant's speech, or provide full-duplex simultaneous interpretation.
-- PeerJS uses a public signaling service by default. Network restrictions, firewalls, or NAT may prevent a direct call; no guaranteed TURN relay is configured.
+- PeerJS uses its default signaling and ICE configuration. The call panel also accepts an optional TURN URL, username, and credential for networks that need a relay; these values stay in page memory and are not saved. Call reliability still needs testing across mobile, Wi-Fi, NAT, and firewall conditions.
 - A browser page cannot register a system-wide virtual camera or replace the camera feed inside WhatsApp or Signal. The current page is not integrated with WhatsApp or Signal.
 - GitHub Pages hosts the static page; it does not run a private processing server.
 - The project has not been verified end-to-end on the user's Android device or with two real call participants. Automated smoke tests check source structure only.
