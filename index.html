@@ -550,7 +550,7 @@
         </label>
         <label for="swapPixelBoost">Pixel boost
           <select id="swapPixelBoost" class="voice-select">
-            <option>128x128</option><option>256x256</option><option>384x384</option><option selected>512x512</option><option>768x768</option><option>1024x1024</option>
+            <option selected>128x128</option><option>256x256</option><option>384x384</option><option>512x512</option><option>768x768</option><option>1024x1024</option>
           </select>
         </label>
         <label for="swapWeight">Face swap weight <strong id="swapWeightValue">0.50</strong>
@@ -578,6 +578,12 @@
         </label>
         <label for="referenceDistance">Reference similarity <strong id="referenceDistanceValue">0.30</strong>
           <input id="referenceDistance" type="range" min="0" max="1" step="0.05" value="0.3" style="width:100%;accent-color:#a78bfa">
+        </label>
+        <label for="selectorAgeStart">Minimum estimated age (optional)
+          <input id="selectorAgeStart" class="call-field" type="number" min="0" max="100" step="1" placeholder="No minimum">
+        </label>
+        <label for="selectorAgeEnd">Maximum estimated age (optional)
+          <input id="selectorAgeEnd" class="call-field" type="number" min="0" max="100" step="1" placeholder="No maximum">
         </label>
         <label for="referencePosition">Reference face position
           <input id="referencePosition" class="call-field" type="number" min="0" step="1" value="0">
@@ -610,7 +616,7 @@
           <select id="benchmarkMode" class="voice-select"><option>warm</option><option>cold</option></select>
         </label>
         <label for="benchmarkResolutions">Benchmark resolutions
-          <select id="benchmarkResolutions" class="voice-select">
+          <select id="benchmarkResolutions" class="voice-select" multiple size="4" aria-label="Benchmark resolutions (select multiple)">
             <option value="240p">240p</option><option value="360p">360p</option><option value="540p">540p</option>
             <option value="720p" selected>720p</option><option value="1080p">1080p</option><option value="1440p">1440p</option><option value="2160p">2160p</option>
           </select>
@@ -1703,7 +1709,7 @@
     // Local FaceFusion profile builder. This exports configuration; browser pages cannot execute local CLI processes.
     const engineConfigIds = [
       "swapModel","swapPixelBoost","swapWeight","landmarkerModel","landmarkerScore",
-      "selectorMode","selectorOrder","referenceDistance","referencePosition","referenceFrame",
+      "selectorMode","selectorOrder","selectorAgeStart","selectorAgeEnd","referenceDistance","referencePosition","referenceFrame",
       "executionProvider","executionDevices","executionThreads","memoryStrategy",
       "benchmarkMode","benchmarkResolutions","benchmarkCycles","engineLogLevel","haltOnError"
     ];
@@ -1727,7 +1733,7 @@
         "",
         "[face_selector]",
         "face_selector_mode = " + engineValue("selectorMode"),
-        "face_selector_order = " + engineValue("selectorOrder"),
+        "face_selector_order = " + engineValue("selectorOrder"),\n        "face_selector_age_start = " + optional("selectorAgeStart"),\n        "face_selector_age_end = " + optional("selectorAgeEnd"),
         "reference_face_position = " + engineNumber("referencePosition",0,100000),
         "reference_face_distance = " + engineNumber("referenceDistance",0,1).toFixed(2),
         "reference_frame_number = " + engineNumber("referenceFrame",0,100000000),
@@ -1776,10 +1782,10 @@
         "--video-memory-strategy", engineValue("memoryStrategy"),
         "--log-level", engineValue("engineLogLevel")
       ];
-      if (provider !== "auto") args.push("--execution-providers",provider);
+      if (provider !== "auto") args.push("--execution-providers",provider);\n      if (optional("selectorAgeStart")) args.push("--face-selector-age-start",engineNumber("selectorAgeStart",0,100));\n      if (optional("selectorAgeEnd")) args.push("--face-selector-age-end",engineNumber("selectorAgeEnd",0,100));
       const ids=engineValue("executionDevices").trim().replace(/[^0-9 ,]/g,"").split(/[ ,]+/).filter(Boolean);
       if (ids.length) args.push("--execution-device-ids",...ids);
-      if (benchmark) args.push("--benchmark-mode",engineValue("benchmarkMode"),"--benchmark-resolutions",engineValue("benchmarkResolutions"),"--benchmark-cycle-count",engineNumber("benchmarkCycles",1,10));
+      if (benchmark) args.push("--benchmark-mode",engineValue("benchmarkMode"),"--benchmark-resolutions",...Array.from(document.getElementById("benchmarkResolutions").selectedOptions).map(option=>option.value),"--benchmark-cycle-count",engineNumber("benchmarkCycles",1,10));
       if (document.getElementById("haltOnError").checked) args.push("--halt-on-error");
       return args.join(" ");
     }
