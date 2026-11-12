@@ -1714,6 +1714,11 @@
       permission.checked = false;
       aiConsent.checked = false;
       if (neuralSwap) stopNeuralFaceEngine();
+      faceAngleFiles.value = "";
+      faceAngleImages = [];
+      faceAngleUrls.forEach(url => URL.revokeObjectURL(url));
+      faceAngleUrls = [];
+      faceAngleStatus.textContent = "Choose new side-angle photos if they match this uploaded face.";
       uploadedFace = null;
       sourcePoints = null;
       triangles = null;
