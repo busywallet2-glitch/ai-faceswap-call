@@ -10,6 +10,8 @@ A browser-based, consent-first prototype combining face landmark alignment, expe
 - Camera access begins only after the user chooses to start it.
 - MediaPipe Face Landmarker tracks a face in the camera stream.
 - A user can upload a face image, confirm they have permission to use it, and preview experimental landmark/triangle alignment.
+- A full-body framing guide helps position the phone to keep the subject head-to-toe in view.
+- Optional MediaPipe Pose Landmarker tracking draws a live skeleton over visible shoulders, arms, hips, and legs; pose tracking runs at a reduced rate to limit processing load.
 - The uploaded face can be removed, and camera tracks are stopped when the camera is stopped or the page is closed.
 - The processed canvas can be shared as a video track in a browser-to-browser PeerJS/WebRTC call.
 - Incoming/outgoing call controls, call IDs, remote video, camera pause, and microphone mute controls are included.
@@ -23,7 +25,7 @@ A browser-based, consent-first prototype combining face landmark alignment, expe
 This is an **experimental prototype, not a finished or production-ready face-swap or calling product**.
 
 - The face effect is a basic landmark/triangle warp, not a neural identity-transfer model. It can distort and does not reliably handle head turns, expressions, lighting, hair, glasses, occlusion, or full-body movement.
-- The face tracker tracks facial landmarks; it is not a full-body tracker.
+- Face replacement still affects the face only. The pose overlay tracks body landmarks but does not replace the whole body, clothing, or identity; the framing guide is only a positioning aid.
 - The voice presets are EQ/texture effects. They do **not** perform true pitch/formant conversion, gender conversion, or identity cloning. Local speech previews are not the caller's live microphone voice.
 - Do not clone or imitate a real person's identifiable voice without that person's explicit permission. Celebrity names are not provided as cloned voice presets.
 - Speech recognition depends on browser support and may use browser-managed online services. Translation sends recognized text to MyMemory. Avoid confidential conversations and review third-party privacy terms.
