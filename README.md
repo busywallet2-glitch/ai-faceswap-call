@@ -3,7 +3,7 @@
 **Live demo:** https://busywallet2-glitch.github.io/ai-faceswap-call/  
 **Source code:** https://github.com/busywallet2-glitch/ai-faceswap-call
 
-A browser-based, consent-first prototype combining face landmark alignment, experimental camera processing, browser-to-browser calling, basic microphone effects, and English speech captions with translated text.
+A mobile-first, consent-first browser prototype with a refreshed premium studio interface, face landmark alignment, experimental camera processing, browser-to-browser calling, basic microphone effects, and English speech captions with translated text.
 
 ## Current features
 
@@ -12,7 +12,9 @@ A browser-based, consent-first prototype combining face landmark alignment, expe
 - A user can upload a face image, confirm they have permission to use it, and preview experimental landmark/triangle alignment.
 - A full-body framing guide helps position the phone to keep the subject head-to-toe in view.
 - The camera can be switched between front and rear lenses before starting, making it easier to set up a tripod or full-body shot.
-- Portrait and landscape capture modes request different aspect ratios; portrait mode is the default for head-to-toe framing. The app reports the actual camera resolution when the device exposes it.
+- Portrait and landscape capture modes request different aspect ratios; portrait mode is the default for head-to-toe framing. The preview stage adapts to the selected orientation and the app reports actual camera resolution when the device exposes it.
+- The interface uses a responsive dark studio layout, high-contrast controls, clearer camera staging, and mobile-friendly panels.
+- The face mesh preview now uses high-quality image resampling, a subtle color/contrast adjustment, and slight triangle overlap to reduce visible mesh gaps. This is a cosmetic improvement to the experimental warp, not realistic neural face replacement.
 - Optional MediaPipe Pose Landmarker tracking draws a live skeleton over visible shoulders, arms, hips, and legs; pose tracking runs at a reduced rate to limit processing load.
 - A framing check uses head, shoulder, hip, and ankle landmarks to tell the user when to step back or adjust the camera so the full body is visible.
 - The uploaded face can be removed, and camera tracks are stopped when the camera is stopped or the page is closed.
@@ -84,4 +86,4 @@ Desktop integration is the practical next platform step. See [DESKTOP_INTEGRATIO
 
 ## Project status
 
-**Prototype stage — experimental browser calling and text translation only. Not ready for production, reliable impersonation-safe identity replacement, or WhatsApp/Signal camera integration.**
+**Prototype stage — refreshed premium interface and improved experimental face-mesh preview. Browser calling and text translation remain experimental. Not ready for production, realistic neural identity replacement, or WhatsApp/Signal camera integration.**
