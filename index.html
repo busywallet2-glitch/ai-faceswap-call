@@ -93,6 +93,13 @@
       <option value="environment">Back camera</option>
     </select>
   </label>
+  <label for="captureFraming">Camera orientation
+    <select id="captureFraming" class="voice-select">
+      <option value="portrait">Portrait — head-to-toe</option>
+      <option value="landscape">Landscape — wider view</option>
+    </select>
+  </label>
+  <p class="hint">Portrait mode requests a tall camera frame to make full-body positioning easier. Your device may adjust the exact resolution automatically.</p>
   <button id="framingGuideButton" type="button" aria-pressed="false">Show Full-Body Framing Guide</button>
   <p class="hint">Full-body framing keeps your head-to-toe image in view when your phone is positioned farther back. Face replacement currently tracks the face only; full-body identity replacement is still under development.</p>
   <button id="startButton">Start Camera</button>
@@ -243,6 +250,7 @@
     const framingGuide = document.getElementById("framingGuide");
     const framingGuideButton = document.getElementById("framingGuideButton");
     const cameraFacing = document.getElementById("cameraFacing");
+    const captureFraming = document.getElementById("captureFraming");
     const outputButton = document.getElementById("outputButton");
     const stopOutputButton = document.getElementById("stopOutputButton");
     const outputPreview = document.getElementById("outputPreview");
@@ -363,7 +371,19 @@
         status.textContent = "Starting camera and loading models...";
         await loadTrackers();
         cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: cameraFacing.value }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: captureFraming.value === "portrait"
+            ? {
+                facingMode: { ideal: cameraFacing.value },
+                width: { ideal: 720 },
+                height: { ideal: 1280 },
+                aspectRatio: { ideal: 9 / 16 }
+              }
+            : {
+                facingMode: { ideal: cameraFacing.value },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                aspectRatio: { ideal: 16 / 9 }
+              },
           audio: { echoCancellation: true, noiseSuppression: true }
         });
         video.srcObject = cameraStream;
@@ -378,7 +398,11 @@
         stopButton.disabled = false;
         cameraFacing.disabled = true;
         outputButton.disabled = typeof canvas.captureStream !== "function";
-        status.textContent = "Camera started. Looking for a face...";
+        const actualVideo = cameraStream.getVideoTracks()[0]?.getSettings?.();
+        const actualSize = actualVideo?.width && actualVideo?.height
+          ? ` ${actualVideo.width}×${actualVideo.height}.`
+          : "";
+        status.textContent = "Camera started" + actualSize + " Looking for a face...";
         detectFace();
       } catch (error) {
         console.error(error);
