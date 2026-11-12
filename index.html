@@ -107,6 +107,8 @@
     label { display: block; width: min(100%, 640px); margin: 15px auto; color: #dce2f1; line-height: 1.55; font-size: 14px; }
     label .voice-select { display: block; margin: 7px auto 0; }
     .hint { max-width: 720px; font-size: 12px; color: #8f9bb5; line-height: 1.65; }
+    .face-angle-previews { display:flex; flex-wrap:wrap; gap:9px; margin:10px 0 14px; }
+    .face-angle-previews img { width:66px; height:66px; object-fit:cover; border:1px solid rgba(167,139,250,.55); border-radius:12px; background:#080c16; }
     .framing-guide {
       position: absolute; inset: 4% 0 3%; z-index: 3; pointer-events: none;
       display: none; align-items: center; justify-content: center;
@@ -526,6 +528,7 @@
     <label for="faceAngleFiles">Optional: add up to two side-angle photos of the same person</label>
     <input type="file" id="faceAngleFiles" accept="image/*" multiple>
     <p id="faceAngleStatus" class="hint" role="status">A front-facing photo is enough to start. Left/right angle photos help the AI keep the identity more consistent when you turn your head.</p>
+    <div id="faceAnglePreviews" class="face-angle-previews" aria-label="Selected side-angle photo previews"></div>
     <button id="clearFaceButton" type="button" disabled>Remove Uploaded Images</button>
     <img id="facePreview" alt="Uploaded face preview">
     <label>
@@ -685,6 +688,7 @@
     const faceFile = document.getElementById("faceFile");
     const faceAngleFiles = document.getElementById("faceAngleFiles");
     const faceAngleStatus = document.getElementById("faceAngleStatus");
+    const faceAnglePreviews = document.getElementById("faceAnglePreviews");
     const facePreview = document.getElementById("facePreview");
     let faceAngleImages = [];
     let faceAngleUrls = [];
@@ -1687,6 +1691,7 @@
       faceAngleImages = [];
       faceAngleUrls.forEach(url => URL.revokeObjectURL(url));
       faceAngleUrls = [];
+      faceAnglePreviews.replaceChildren();
       faceAngleStatus.textContent = "Optional angle photos cleared.";
       facePreview.removeAttribute("src");
       facePreview.style.display = "none";
@@ -1718,6 +1723,7 @@
       faceAngleImages = [];
       faceAngleUrls.forEach(url => URL.revokeObjectURL(url));
       faceAngleUrls = [];
+      faceAnglePreviews.replaceChildren();
       faceAngleStatus.textContent = "Choose new side-angle photos if they match this uploaded face.";
       uploadedFace = null;
       sourcePoints = null;
@@ -1793,6 +1799,12 @@
         faceAngleUrls.forEach(url => URL.revokeObjectURL(url));
         faceAngleUrls = nextUrls;
         faceAngleImages = images;
+        faceAnglePreviews.replaceChildren(...nextUrls.map((url, index) => {
+          const preview = document.createElement("img");
+          preview.src = url;
+          preview.alt = "Additional face angle " + (index + 1);
+          return preview;
+        }));
         if (neuralSwap) stopNeuralFaceEngine();
         faceAngleStatus.textContent = images.length
           ? images.length + " extra angle photo(s) ready. Use left/right views of the same person for best head-turn consistency."
