@@ -485,8 +485,15 @@
         const frameTime = performance.now();
         const results = videoLandmarker.detectForVideo(video, frameTime);
         if (showBodyPose.checked && poseLandmarker && frameTime - lastPoseDetectionTime >= 100) {
-          const poseResults = poseLandmarker.detectForVideo(video, frameTime);
-          lastPoseLandmarks = poseResults.landmarks?.[0] || null;
+          try {
+            const poseResults = poseLandmarker.detectForVideo(video, frameTime);
+            lastPoseLandmarks = poseResults.landmarks?.[0] || null;
+          } catch (poseError) {
+            console.warn("Body tracking stopped after a processing error.", poseError);
+            try { poseLandmarker.close(); } catch (_) {}
+            poseLandmarker = null;
+            lastPoseLandmarks = null;
+          }
           lastPoseDetectionTime = frameTime;
         }
         ctx.setTransform(1,0,0,1,0,0);
