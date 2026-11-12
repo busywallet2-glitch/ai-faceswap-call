@@ -434,13 +434,25 @@
       }
     }
 
+    function renderCameraOnly() {
+      if (!cameraStream || video.readyState < 2) return;
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      animationFrame = requestAnimationFrame(renderCameraOnly);
+    }
+
     async function startCamera() {
       cameraStage.classList.toggle("landscape", captureFraming.value === "landscape");
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraPlaceholder("Camera access requires a supported browser and a secure HTTPS connection.");
+        status.textContent = "Camera access is unavailable in this browser or page context.";
+        return;
+      }
       try {
         startButton.disabled = true;
-        setCameraPlaceholder("Preparing camera and loading face-tracking models...");
-        status.textContent = "Starting camera and loading models...";
-        await loadTrackers();
+        setCameraPlaceholder("Opening your camera...");
+        status.textContent = "Requesting camera and microphone permission...";
         cameraStream = await navigator.mediaDevices.getUserMedia({
           video: captureFraming.value === "portrait"
             ? {
@@ -458,14 +470,16 @@
           audio: { echoCancellation: true, noiseSuppression: true }
         });
         video.srcObject = cameraStream;
-        await new Promise((resolve) => {
-          if (video.readyState >= 1) resolve();
-          else video.onloadedmetadata = resolve;
+        await new Promise((resolve, reject) => {
+          if (video.readyState >= 1) return resolve();
+          const timeout = setTimeout(() => reject(new Error("The camera did not become ready. Please try again.")), 12000);
+          video.onloadedmetadata = () => { clearTimeout(timeout); resolve(); };
+          video.onerror = () => { clearTimeout(timeout); reject(new Error("The browser could not read the camera stream.")); };
         });
         await video.play();
         cameraPlaceholder.style.display = "none";
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth || 720;
+        canvas.height = video.videoHeight || 1280;
         stopButton.disabled = false;
         cameraFacing.disabled = true;
         outputButton.disabled = typeof canvas.captureStream !== "function";
@@ -473,13 +487,36 @@
         const actualSize = actualVideo?.width && actualVideo?.height
           ? ` ${actualVideo.width}×${actualVideo.height}.`
           : "";
-        status.textContent = "Camera started" + actualSize + " Looking for a face...";
-        detectFace();
+        status.textContent = "Camera is live" + actualSize + " Loading face tracking in the background...";
+        // Show a live preview immediately. Slow model downloads no longer leave
+        // the user staring at a loading screen or prevent the camera from opening.
+        renderCameraOnly();
+
+        try {
+          await loadTrackers();
+          if (!cameraStream) return;
+          if (animationFrame) cancelAnimationFrame(animationFrame);
+          animationFrame = null;
+          lastVideoTime = -1;
+          status.textContent = "Camera and face tracking are ready. Looking for a face...";
+          detectFace();
+        } catch (trackingError) {
+          console.error("Face tracking could not be loaded.", trackingError);
+          status.textContent = "Camera is live, but face tracking could not load. Check your connection and retry the tracker by reloading the page.";
+          // Keep the camera preview active even when a third-party model/CDN is unavailable.
+        }
       } catch (error) {
         console.error(error);
         stopCamera();
-        setCameraPlaceholder("Camera preview is unavailable. Check your internet connection and camera permission, then try again.");
-        status.textContent = `Could not start: ${error?.message || "Check your internet connection and camera permission, then try again."}`;
+        const message = error?.name === "NotAllowedError"
+          ? "Camera or microphone permission was denied. Allow access in your browser settings and try again."
+          : error?.name === "NotFoundError"
+          ? "No camera or microphone was found on this device."
+          : error?.name === "NotReadableError"
+          ? "The camera is busy in another app. Close that app and try again."
+          : error?.message || "Check your camera permission and try again.";
+        setCameraPlaceholder(message);
+        status.textContent = "Could not start camera: " + message;
       }
     }
 
