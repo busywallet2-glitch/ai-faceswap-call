@@ -78,6 +78,8 @@
     <button id="answerButton" type="button" disabled>Answer Incoming Call</button>
     <button id="declineButton" type="button" disabled>Decline</button>
     <button id="hangupButton" type="button" disabled>Hang Up</button>
+    <button id="muteButton" type="button" disabled>Mute Microphone</button>
+    <button id="cameraToggleButton" type="button" disabled>Pause Camera</button>
     <p id="callStatus" role="status">Call service is not connected.</p>
     <h3>Other person</h3>
     <video id="remotePreview" autoplay playsinline></video>
@@ -97,7 +99,7 @@
       Show aligned face preview
     </label>
     <p id="status">Camera is stopped.</p>
-    <p class="hint">Use a clear, front-facing photo with one visible face. For full-body framing, place your phone farther away and keep your head clearly visible. The selected image is processed locally in this browser session.</p>
+    <p class="hint">Use only a face image you own or have explicit permission to use, and disclose altered video to call participants. Use a clear, front-facing photo with one visible face. For full-body framing, place your phone farther away and keep your head clearly visible. The selected image is processed locally in this browser session.</p>
   </div>
 
   <p class="hint">This is an experimental landmark-based face replacement, not a production-quality identity replacement. The built-in browser call is an initial WebRTC feature and depends on network compatibility. Only use a face image with the person's permission, and tell call participants when video is altered.</p>
@@ -132,6 +134,8 @@
     const hangupButton = document.getElementById("hangupButton");
     const callStatus = document.getElementById("callStatus");
     const remotePreview = document.getElementById("remotePreview");
+    const muteButton = document.getElementById("muteButton");
+    const cameraToggleButton = document.getElementById("cameraToggleButton");
 
     function setCameraPlaceholder(message) {
       cameraPlaceholder.textContent = message;
@@ -376,6 +380,8 @@
         remotePreview.play().catch(() => {});
         callStatus.textContent = "Connected. Your processed camera and microphone are being shared.";
         hangupButton.disabled = false;
+        muteButton.disabled = false;
+        cameraToggleButton.disabled = false;
       });
       call.on("close", closeActiveCall);
       call.on("error", error => {
@@ -457,6 +463,27 @@
       } catch (error) {
         callStatus.textContent = "Could not answer: " + (error?.message || "Try again.");
       }
+    }
+
+    function toggleMicrophone() {
+      const tracks = processedStream?.getAudioTracks() || [];
+      if (!tracks.length) {
+        callStatus.textContent = "No microphone track is available. Restart the camera and allow microphone access.";
+        return;
+      }
+      const enable = tracks.some(track => track.enabled === false);
+      tracks.forEach(track => { track.enabled = enable; });
+      muteButton.textContent = enable ? "Mute Microphone" : "Unmute Microphone";
+      callStatus.textContent = enable ? "Microphone is on." : "Microphone is muted.";
+    }
+
+    function toggleCallCamera() {
+      const tracks = processedStream?.getVideoTracks() || [];
+      if (!tracks.length) return;
+      const enable = tracks.some(track => track.enabled === false);
+      tracks.forEach(track => { track.enabled = enable; });
+      cameraToggleButton.textContent = enable ? "Pause Camera" : "Resume Camera";
+      callStatus.textContent = enable ? "Camera transmission resumed." : "Camera transmission paused.";
     }
 
     function declineCall() {
@@ -575,6 +602,8 @@
     callButton.addEventListener("click", placeCall);
     answerButton.addEventListener("click", answerCall);
     declineButton.addEventListener("click", declineCall);
+    muteButton.addEventListener("click", toggleMicrophone);
+    cameraToggleButton.addEventListener("click", toggleCallCamera);
     hangupButton.addEventListener("click", () => {
       if (activeCall) activeCall.close();
       closeActiveCall();
