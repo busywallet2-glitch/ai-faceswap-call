@@ -65,7 +65,7 @@ The repository includes a GitHub Actions smoke test that runs with Node.js 20:
 node tests/smoke.mjs
 ```
 
-The smoke test checks that key controls, permission gates, cleanup, voice-effect, caption/translation, and calling code remain present. It does not run a browser, test audio/video quality, or prove that calls work on a particular device.
+The smoke test parses the browser module for JavaScript syntax and checks that key controls, permission gates, cleanup, full-body tracking/framing, voice-effect, caption/translation, and calling code remain present. It does not run a browser, load the MediaPipe models, test audio/video quality, or prove that calls work on a particular device.
 
 ## Remaining engineering work
 
