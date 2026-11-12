@@ -46,7 +46,7 @@
 </head>
 <body>
   <h1>Face Tracking Studio</h1>
-  <p>Track your face and preview a consent-based face image alignment.</p>
+  <p>Live camera with consent-based face replacement and processed video output.</p>
 
   <div class="camera-box">
     <div id="cameraPlaceholder" role="status">Camera is off. Tap “Start Camera” to begin.</div>
@@ -79,10 +79,10 @@
       Show aligned face preview
     </label>
     <p id="status">Camera is stopped.</p>
-    <p class="hint">Use a clear, front-facing photo with one visible face. The image is processed in this browser session.</p>
+    <p class="hint">Use a clear, front-facing photo with one visible face. For full-body framing, place your phone farther away and keep your head clearly visible. The selected image is processed locally in this browser session.</p>
   </div>
 
-  <p class="hint">This is an experimental landmark-warp preview, not a production-quality identity replacement. It is not connected to video calls. Only use a face image with the person's permission, and tell call participants when video is altered.</p>
+  <p class="hint">This is an experimental landmark-based face replacement, not a production-quality identity replacement. Processed output is available as a browser media stream, but this page is not yet connected to a video-call service. Only use a face image with the person's permission, and tell call participants when video is altered.</p>
 
   <script type="module">
     // Load third-party libraries only when the user starts tracking. This keeps the page UI usable even if a CDN is slow or unavailable.
@@ -212,18 +212,38 @@
       return [a,b,c,d,e,f];
     }
 
+    // MediaPipe Face Mesh oval boundary. Clipping to this contour prevents the
+    // uploaded photo's background from being painted over the live camera.
+    const FACE_OVAL = [
+      10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,
+      400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,
+      54,103,67,109
+    ];
+
     function warpFace(destinationLandmarks) {
       if (!uploadedFace || !sourcePoints || !triangles ||
           !permission.checked || !showSwap.checked) return;
 
       const destination = getPixelPoints(destinationLandmarks, canvas.width, canvas.height);
       ctx.save();
-      ctx.globalAlpha = 0.94;
+
+      // Keep the replacement inside the live face silhouette.
+      ctx.beginPath();
+      FACE_OVAL.forEach((id, index) => {
+        const point = destination[id];
+        if (!point) return;
+        if (index === 0) ctx.moveTo(point[0], point[1]);
+        else ctx.lineTo(point[0], point[1]);
+      });
+      ctx.closePath();
+      ctx.clip();
+      ctx.globalAlpha = 0.97;
 
       for (let i = 0; i < triangles.length; i += 3) {
         const ids = [triangles[i], triangles[i+1], triangles[i+2]];
         const src = ids.map(id => sourcePoints[id]);
         const dst = ids.map(id => destination[id]);
+        if (dst.some(point => !point) || src.some(point => !point)) continue;
         const matrix = affineFromTriangles(src, dst);
         if (!matrix) continue;
 
