@@ -425,6 +425,20 @@
   <div class="panel">
     <h2>Private Browser Video Call</h2>
     <p class="hint">Create a call ID and share it with the other person. Both people open this page, enable their camera and microphone, then connect using the ID. Calls use peer-to-peer WebRTC where network conditions allow.</p>
+    <div class="panel" style="margin:12px 0;padding:15px;background:rgba(8,12,22,.62)">
+      <h3>Call network reliability</h3>
+      <p class="hint">The default PeerJS network configuration is used when these fields are blank. If a mobile or office network blocks direct connections, add a TURN relay supplied by a trusted provider. These credentials stay in this page's memory and are not saved to the project.</p>
+      <label for="turnServerUrl">Optional TURN server URL
+        <input id="turnServerUrl" class="call-field" type="text" placeholder="turn:your-server.example:3478 or turns:..." autocomplete="off" spellcheck="false">
+      </label>
+      <label for="turnServerUsername">TURN username
+        <input id="turnServerUsername" class="call-field" type="text" autocomplete="off">
+      </label>
+      <label for="turnServerCredential">TURN credential
+        <input id="turnServerCredential" class="call-field" type="password" autocomplete="new-password">
+      </label>
+      <p id="networkStatus" class="hint" role="status">Using the PeerJS default ICE server configuration.</p>
+    </div>
     <button id="connectButton" type="button">Create My Call ID</button>
     <p>Your call ID</p>
     <input id="myPeerId" class="call-field" readonly placeholder="Tap Create My Call ID">
@@ -1461,6 +1475,19 @@
 
     function attachCallHandlers(call) {
       activeCall = call;
+      const connection = call.peerConnection;
+      if (connection) {
+        const reportConnectionState = () => {
+          const state = connection.connectionState || connection.iceConnectionState || "connecting";
+          if (state === "connected") callStatus.textContent = "Connected. Neural face swap uses the stable processed video output.";
+          else if (state === "disconnected") callStatus.textContent = "Call network interrupted. Trying to recover the connection…";
+          else if (state === "failed") callStatus.textContent = "Call network failed. Check the TURN relay or try another network.";
+          else if (state === "connecting") callStatus.textContent = "Establishing encrypted video and audio connection…";
+        };
+        connection.addEventListener("connectionstatechange", reportConnectionState);
+        connection.addEventListener("iceconnectionstatechange", reportConnectionState);
+        reportConnectionState();
+      }
       call.on("stream", remoteStream => {
         remotePreview.srcObject = remoteStream;
         remotePreview.style.display = "block";
@@ -1485,7 +1512,28 @@
           const module = await import("https://esm.sh/peerjs@1.5.4");
           PeerClass = module.default;
         }
-        peer = new PeerClass();
+        const turnUrl = document.getElementById("turnServerUrl").value.trim();
+        const turnUsername = document.getElementById("turnServerUsername").value.trim();
+        const turnCredential = document.getElementById("turnServerCredential").value;
+        if (turnUrl && (!/^turns?:/i.test(turnUrl) || !turnUsername || !turnCredential)) {
+          networkStatus.textContent = "Enter a valid turn:/turns: URL, username, and credential together, or leave all three blank.";
+          callStatus.textContent = "TURN settings are incomplete.";
+          return null;
+        }
+        if (turnUrl) {
+          const config = {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: turnUrl, username: turnUsername, credential: turnCredential }
+            ],
+            sdpSemantics: "unified-plan"
+          };
+          peer = new PeerClass(undefined, { config });
+          networkStatus.textContent = "Custom TURN relay configured for this browser session.";
+        } else {
+          peer = new PeerClass();
+          networkStatus.textContent = "Using the PeerJS default ICE server configuration.";
+        }
         peer.on("open", id => {
           myPeerId.value = id;
           callStatus.textContent = "Ready. Share your call ID with the person you want to call.";
