@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
-const moduleScript = html.match(/<script type="module">([\\s\\S]*?)<\\/script>/);
+const moduleScript = html.match(/<script type="module">([\s\S]*?)<\/script>/);
 assert.ok(moduleScript, "The app must include its browser module script.");
 const syntaxPath = join(tmpdir(), `busywallet-app-syntax-${process.pid}.mjs`);
 writeFileSync(syntaxPath, moduleScript[1], "utf8");
