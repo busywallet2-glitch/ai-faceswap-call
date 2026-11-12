@@ -100,7 +100,20 @@ const required = [
   "https://esm.sh/peerjs@1.5.4",
   "function closeActiveCall()",
   "recognition.lang = \"en-US\"",
-  "translationRequestToken"
+  "translationRequestToken",
+  "Neural Face Swap Engine",
+  "id=\"aiConsent\"",
+  "id=\"startAIButton\"",
+  "id=\"stopAIButton\"",
+  "browser-inswapper@0.1.0",
+  "const caps = await probe()",
+  "KNOWN_SHA256.swapperFp16",
+  "facefusion-assets/releases/download/models/inswapper_128_fp16.onnx",
+  "neuralSwap.findFaces(uploadedFace)",
+  "neuralSwap.process(cameraStream.getVideoTracks()[0]",
+  "sender.replaceTrack(track)",
+  "processedVideoMode !== expectedMode",
+  "aiConsent.checked = false"
 
 ];
 
