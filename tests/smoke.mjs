@@ -65,6 +65,8 @@ const required = [
   "function drawBodyPose(landmarks)",
   'id="bodyFrameStatus"',
   "function updateBodyFrameStatus(landmarks)",
+  "const required = [0,11,12,23,24,27,28,31,32]",
+  "const minimumConfidence = index >= 27 ? 0.25 : 0.4",
   'bodyFrameStatus.textContent = "Enable body tracking to check whether your full body is in frame."',
   "Full-body landmarks detected.",
   "Move farther back and show your head, shoulders, hips, and both feet.",
