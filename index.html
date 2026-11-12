@@ -1453,7 +1453,10 @@
       remotePreview.srcObject = null;
       remotePreview.style.display = "none";
       hangupButton.disabled = true;
-      callStatus.textContent = "Call ended.";
+      const outputTrackLive = processedStream && processedStream.getTracks().some(track => track.readyState === "live");
+      outputButton.disabled = !cameraStream || typeof canvas.captureStream !== "function";
+      stopOutputButton.disabled = !outputTrackLive;
+      callStatus.textContent = "Call ended. Your camera is ready for another call.";
     }
 
     function attachCallHandlers(call) {
