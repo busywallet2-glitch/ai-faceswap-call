@@ -12,6 +12,7 @@ A browser-based, consent-first prototype combining face landmark alignment, expe
 - A user can upload a face image, confirm they have permission to use it, and preview experimental landmark/triangle alignment.
 - A full-body framing guide helps position the phone to keep the subject head-to-toe in view.
 - Optional MediaPipe Pose Landmarker tracking draws a live skeleton over visible shoulders, arms, hips, and legs; pose tracking runs at a reduced rate to limit processing load.
+- A framing check uses head, shoulder, hip, and ankle landmarks to tell the user when to step back or adjust the camera so the full body is visible.
 - The uploaded face can be removed, and camera tracks are stopped when the camera is stopped or the page is closed.
 - The processed canvas can be shared as a video track in a browser-to-browser PeerJS/WebRTC call.
 - Incoming/outgoing call controls, call IDs, remote video, camera pause, and microphone mute controls are included.
