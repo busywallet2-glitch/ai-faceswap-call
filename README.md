@@ -24,7 +24,7 @@ A browser-based, consent-first prototype combining face landmark alignment, expe
 
 This is an **experimental prototype, not a finished or production-ready face-swap or calling product**.
 
-- The face effect is a basic landmark/triangle warp, not a neural identity-transfer model. It can distort and does not reliably handle head turns, expressions, lighting, hair, glasses, occlusion, or full-body movement.
+- Face landmarks are temporally smoothed to reduce frame-to-frame jitter, but the face effect is still a basic landmark/triangle warp, not a neural identity-transfer model. It can distort and does not reliably handle large head turns, expressions, lighting, hair, glasses, or occlusion.
 - Face replacement still affects the face only. The pose overlay tracks body landmarks but does not replace the whole body, clothing, or identity; the framing guide is only a positioning aid.
 - The voice presets are EQ/texture effects. They do **not** perform true pitch/formant conversion, gender conversion, or identity cloning. Local speech previews are not the caller's live microphone voice.
 - Do not clone or imitate a real person's identifiable voice without that person's explicit permission. Celebrity names are not provided as cloned voice presets.
