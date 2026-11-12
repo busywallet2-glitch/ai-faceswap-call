@@ -202,6 +202,7 @@
       Show full-body pose tracking overlay
     </label>
     <p class="hint">The body overlay tracks shoulders, arms, hips, and legs when they are visible in the frame. It is a tracking aid, not whole-body face replacement.</p>
+    <p id="bodyFrameStatus" class="hint" role="status">Enable body tracking to check whether your full body is in frame.</p>
     <p id="status">Camera is stopped.</p>
     <p class="hint">Use only a face image you own or have explicit permission to use, and disclose altered video to call participants. Use a clear, front-facing photo with one visible face. For full-body framing, place your phone farther away and keep your head clearly visible. The selected image is processed locally in this browser session.</p>
   </div>
@@ -230,6 +231,7 @@
     const permission = document.getElementById("permission");
     const showSwap = document.getElementById("showSwap");
     const showBodyPose = document.getElementById("showBodyPose");
+    const bodyFrameStatus = document.getElementById("bodyFrameStatus");
     const status = document.getElementById("status");
     const cameraPlaceholder = document.getElementById("cameraPlaceholder");
     const framingGuide = document.getElementById("framingGuide");
@@ -444,6 +446,25 @@
       ctx.restore();
     }
 
+    function updateBodyFrameStatus(landmarks) {
+      if (!landmarks) {
+        bodyFrameStatus.textContent = "No full body detected yet. Stand farther back and keep your head and feet visible.";
+        return;
+      }
+      const required = [0,11,12,23,24,27,28];
+      const visible = required.every(index => {
+        const point = landmarks[index];
+        if (!point) return false;
+        const confidence = Number.isFinite(point.visibility) ? point.visibility
+          : Number.isFinite(point.presence) ? point.presence : 1;
+        return confidence >= 0.45 && point.x >= 0.01 && point.x <= 0.99 &&
+          point.y >= 0.01 && point.y <= 0.99;
+      });
+      bodyFrameStatus.textContent = visible
+        ? "Full-body landmarks detected. Keep a little space above your head and below your feet."
+        : "Part of your body is outside the frame or not clearly visible. Move farther back and show your head, shoulders, hips, and both feet.";
+    }
+
     function drawBodyPose(landmarks) {
       const connections = [
         [11,12],[11,13],[13,15],[12,14],[14,16],
@@ -508,11 +529,13 @@
           try {
             const poseResults = poseLandmarker.detectForVideo(video, frameTime);
             lastPoseLandmarks = poseResults.landmarks?.[0] || null;
+            updateBodyFrameStatus(lastPoseLandmarks);
           } catch (poseError) {
             console.warn("Body tracking stopped after a processing error.", poseError);
             try { poseLandmarker.close(); } catch (_) {}
             poseLandmarker = null;
             lastPoseLandmarks = null;
+            updateBodyFrameStatus(null);
           }
           lastPoseDetectionTime = frameTime;
         }
@@ -1042,6 +1065,15 @@
     hangupButton.addEventListener("click", () => {
       if (activeCall) activeCall.close();
       closeActiveCall();
+    });
+    showBodyPose.addEventListener("change", () => {
+      if (showBodyPose.checked) {
+        bodyFrameStatus.textContent = poseLandmarker
+          ? "Checking full-body framing..."
+          : "Body tracking is unavailable on this load. Face tracking can still be used.";
+      } else {
+        bodyFrameStatus.textContent = "Body tracking is off.";
+      }
     });
     framingGuideButton.addEventListener("click", () => {
       const visible = framingGuide.classList.toggle("visible");
