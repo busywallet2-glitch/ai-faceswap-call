@@ -20,6 +20,9 @@ assert.equal(
 
 const required = [
   'id="camera"',
+  'id="cameraFacing"',
+  'value="environment"',
+  "facingMode: { ideal: cameraFacing.value }",
   'id="cameraPlaceholder"',
   "Camera is off. Tap",
   "function setCameraPlaceholder(message)",
