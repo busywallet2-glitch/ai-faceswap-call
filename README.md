@@ -2,6 +2,14 @@
 
 ## Face Swapper Control Center
 
+### Starter profiles
+
+- [Balanced profile](profiles/busywallet-balanced.ini) — conservative 128×128 pixel boost and the supplied default swap weight.
+- [Quality-first profile](profiles/busywallet-quality.ini) — 512×512 pixel boost and a stronger blend; use only after checking GPU memory and benchmark results.
+
+These are starter configurations, not universal optimal settings. Model availability and exact configuration keys depend on the installed FaceFusion release.
+
+
 The browser studio now includes a local-engine profile builder for the FaceFusion-compatible options supplied for this project. It can export a `facefusion.ini`, copy a local launch command, and prepare a benchmark command. Settings include the face-swapper model, pixel boost, swap weight, face landmarker and confidence, face selector and reference tracking, execution provider/device IDs/thread count, video-memory strategy, benchmark mode/resolution/cycles, log level, and halt-on-error.
 
 **Important:** the profile builder does not run FaceFusion inside GitHub Pages. Install and run the Python engine on a compatible local computer or GPU host. The CLI and configuration schema vary by FaceFusion release; verify generated flags against the exact installed version before use. Webcam UDP/V4L2 output and OBS integration require the local engine and operating-system support; the static website cannot create a system virtual camera. See [ENGINE_SETUP.md](ENGINE_SETUP.md).
