@@ -45,6 +45,29 @@
     .voice-select { width: min(100%, 420px); padding: 12px; border-radius: 8px; background: #111827; color: white; border: 1px solid #4b5563; font-size: 16px; }
     label { display: block; margin: 14px auto; line-height: 1.5; }
     .hint { font-size: 13px; color: #9ca3af; }
+    .framing-guide {
+      position: absolute; inset: 4% 0 3%; z-index: 3; pointer-events: none;
+      display: none; align-items: center; justify-content: center;
+    }
+    .framing-guide.visible { display: flex; }
+    .framing-person {
+      position: relative; width: min(58%, 300px); height: 100%;
+      border: 2px dashed rgba(167, 243, 208, .85); border-radius: 48% 48% 24% 24% / 22% 22% 14% 14%;
+      filter: drop-shadow(0 0 3px rgba(0,0,0,.9));
+    }
+    .framing-head {
+      position: absolute; width: 27%; aspect-ratio: 1; left: 36.5%; top: 3%;
+      border: 2px dashed rgba(196,181,253,.95); border-radius: 50%;
+    }
+    .framing-shoulders {
+      position: absolute; left: 12%; right: 12%; top: 31%; height: 36%;
+      border: 2px dashed rgba(196,181,253,.8); border-radius: 44% 44% 18% 18%;
+    }
+    .framing-guide-label {
+      position: absolute; bottom: 3%; left: 50%; transform: translateX(-50%);
+      background: rgba(17,24,39,.8); color: #d1fae5; padding: 5px 9px;
+      border-radius: 20px; font-size: 11px; white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -55,8 +78,17 @@
     <div id="cameraPlaceholder" role="status">Camera is off. Tap “Start Camera” to begin.</div>
     <video id="camera" autoplay playsinline muted></video>
     <canvas id="overlay"></canvas>
+    <div id="framingGuide" class="framing-guide" aria-hidden="true">
+      <div class="framing-person">
+        <div class="framing-head"></div>
+        <div class="framing-shoulders"></div>
+      </div>
+      <span class="framing-guide-label">Keep your full body inside this outline</span>
+    </div>
   </div>
 
+  <button id="framingGuideButton" type="button" aria-pressed="false">Show Full-Body Framing Guide</button>
+  <p class="hint">Full-body framing keeps your head-to-toe image in view when your phone is positioned farther back. Face replacement currently tracks the face only; full-body identity replacement is still under development.</p>
   <button id="startButton">Start Camera</button>
   <button id="stopButton" disabled>Stop Camera</button>
 
@@ -189,6 +221,8 @@
     const showSwap = document.getElementById("showSwap");
     const status = document.getElementById("status");
     const cameraPlaceholder = document.getElementById("cameraPlaceholder");
+    const framingGuide = document.getElementById("framingGuide");
+    const framingGuideButton = document.getElementById("framingGuideButton");
     const outputButton = document.getElementById("outputButton");
     const stopOutputButton = document.getElementById("stopOutputButton");
     const outputPreview = document.getElementById("outputPreview");
@@ -907,6 +941,13 @@
     hangupButton.addEventListener("click", () => {
       if (activeCall) activeCall.close();
       closeActiveCall();
+    });
+    framingGuideButton.addEventListener("click", () => {
+      const visible = framingGuide.classList.toggle("visible");
+      framingGuideButton.setAttribute("aria-pressed", String(visible));
+      framingGuideButton.textContent = visible
+        ? "Hide Full-Body Framing Guide"
+        : "Show Full-Body Framing Guide";
     });
     startButton.addEventListener("click", startCamera);
     stopButton.addEventListener("click", stopCamera);
