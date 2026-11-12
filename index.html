@@ -1196,7 +1196,14 @@
           onStats:({fps,inferMs,backend,latencyMs})=>{aiEngineStats.textContent=backend.toUpperCase()+" · "+Math.round(fps)+" output fps · "+Math.round(inferMs)+" ms inference · "+latencyMs+" ms latency";},
           onLog:(message)=>console.info("[neural-face-swap]",message)
         });
-        await neuralSwap.setIdentity({image:uploadedFace});
+        aiEngineStatus.textContent = "Checking the uploaded portrait for face quality…";
+        const detectedFaces = await neuralSwap.findFaces(uploadedFace);
+        if (!detectedFaces.length) throw new Error("No face was detected in the uploaded portrait. Choose a clear photo with one visible face.");
+        const selectedFace = detectedFaces[0];
+        const qualityNotes = selectedFace.issues.map(issue => ({small:"small face",turned:"side-facing",blurry:"blurry",dark:"dark",bright:"overexposed"}[issue] || issue));
+        await neuralSwap.setIdentity({image:uploadedFace,face:selectedFace});
+        if (selectedFace.preview) selectedFace.preview.close();
+        aiEngineStats.textContent = qualityNotes.length ? "Portrait quality warning: " + qualityNotes.join(", ") + ". Use a sharp, front-facing, evenly lit photo for best results." : "Portrait quality check passed.";
         neuralSwapTrack = neuralSwap.process(cameraStream.getVideoTracks()[0],{maxFps:24});
         aiEngineStatus.textContent = "Neural face replacement is active. Enable Processed Camera Output to preview it or share it in a call.";
         stopAIButton.disabled = false; outputButton.disabled = false;
@@ -1437,6 +1444,9 @@
 
     function clearUploadedFace() {
       imageLoadToken += 1;
+      if (neuralSwap) stopNeuralFaceEngine();
+      aiConsent.checked = false;
+      startAIButton.disabled = true;
       uploadedFace = null;
       sourcePoints = null;
       triangles = null;
@@ -1466,6 +1476,7 @@
         return;
       }
       permission.checked = false;
+      aiConsent.checked = false;
       if (neuralSwap) stopNeuralFaceEngine();
       uploadedFace = null;
       sourcePoints = null;
