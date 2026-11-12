@@ -655,6 +655,12 @@
     let smoothedFaceLandmarks = null;
 
     const video = document.getElementById("camera");
+    // A hidden decoder receives the neural engine track. The outgoing canvas track stays stable
+    // for the entire call, so enabling/disabling AI never forces WebRTC renegotiation.
+    const neuralOutputVideo = document.createElement("video");
+    neuralOutputVideo.autoplay = true;
+    neuralOutputVideo.playsInline = true;
+    neuralOutputVideo.muted = true;
     const canvas = document.getElementById("overlay");
     const ctx = canvas.getContext("2d");
     const startButton = document.getElementById("startButton");
@@ -797,11 +803,18 @@
       }
     }
 
+    function getProcessedCanvasSource() {
+      return neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2
+        ? neuralOutputVideo
+        : video;
+    }
+
     function renderCameraOnly() {
       if (!cameraStream || video.readyState < 2) return;
+      const source = getProcessedCanvasSource();
       ctx.setTransform(1,0,0,1,0,0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
       animationFrame = requestAnimationFrame(renderCameraOnly);
     }
 
@@ -1067,14 +1080,19 @@
         ctx.setTransform(1,0,0,1,0,0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         // The canvas now contains the complete processed camera frame, not just a transparent overlay.
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const processedSource = getProcessedCanvasSource();
+        ctx.drawImage(processedSource, 0, 0, canvas.width, canvas.height);
 
         if (results.faceLandmarks.length) {
           smoothedFaceLandmarks = smoothFaceLandmarks(
             results.faceLandmarks[0], smoothedFaceLandmarks
           );
-          warpFace(smoothedFaceLandmarks);
-          status.textContent = permission.checked && uploadedFace
+          if (!(neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2)) {
+            warpFace(smoothedFaceLandmarks);
+          }
+          status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
+            ? "Neural face replacement is being composited into the live output."
+            : permission.checked && uploadedFace
             ? "Face detected. Experimental alignment preview active."
             : "Face detected. Tracking is working.";
         } else {
@@ -1316,25 +1334,55 @@
         if (selectedFace.preview) selectedFace.preview.close();
         aiEngineStats.textContent = qualityNotes.length ? "Portrait quality warning: " + qualityNotes.join(", ") + ". Use a sharp, front-facing, evenly lit photo for best results." : "Portrait quality check passed.";
         neuralSwapTrack = neuralSwap.process(cameraStream.getVideoTracks()[0],{maxFps:24});
-        aiEngineStatus.textContent = "Neural face replacement is active. Enable Processed Camera Output to preview it or share it in a call.";
+        neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack]);
+        neuralOutputVideo.play().catch(error => {
+          console.warn("Neural output preview could not start yet; the camera feed will remain available.", error);
+        });
+        neuralSwapTrack.addEventListener("ended", () => {
+          neuralOutputVideo.pause();
+          neuralOutputVideo.srcObject = null;
+          aiEngineStatus.textContent = "Neural output stopped. The live camera/call feed has fallen back to the original camera.";
+        }, {once:true});
+        aiEngineStatus.textContent = activeCall
+          ? "Neural replacement is ready. The existing call will switch through its stable processed video track without reconnecting."
+          : "Neural face replacement is active. Enable Processed Camera Output or start a call to share it.";
         stopAIButton.disabled = false; outputButton.disabled = false;
       } catch(error) {
         console.error("Neural face engine could not start.",error);
         aiEngineStatus.textContent = "Neural engine unavailable: "+(error && error.message ? error.message : "Check browser support, model access, and connection.");
-        if(neuralSwap){try{neuralSwap.dispose();}catch(_){} } neuralSwap=null;
         if(neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack=null;
+        neuralOutputVideo.pause(); neuralOutputVideo.srcObject = null;
+        if(neuralSwap){try{neuralSwap.dispose();}catch(_){} } neuralSwap=null;
       } finally { neuralSwapStarting=false; aiProgress.hidden=true; startAIButton.disabled=!(cameraStream&&uploadedFace&&permission.checked&&aiConsent.checked); }
     }
 
     function stopNeuralFaceEngine() {
-      if(neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack=null;
-      if(neuralSwap){try{neuralSwap.dispose();}catch(_){} } neuralSwap=null;
-      stopProcessedOutput(); stopAIButton.disabled=true;
+      if(neuralSwapTrack) neuralSwapTrack.stop();
+      neuralSwapTrack=null;
+      neuralOutputVideo.pause();
+      neuralOutputVideo.srcObject=null;
+      if(neuralSwap){try{neuralSwap.dispose();}catch(_){} }
+      neuralSwap=null;
+      // Keep the processed canvas stream alive. During a call it seamlessly falls back
+      // to the raw camera instead of ending the sender track or dropping the call.
+      stopAIButton.disabled=true;
       startAIButton.disabled=!(cameraStream&&uploadedFace&&permission.checked&&aiConsent.checked);
-      aiEngineStatus.textContent="Neural face engine stopped."; aiEngineStats.textContent="No neural inference is running.";
+      aiEngineStatus.textContent=activeCall
+        ? "Neural engine stopped. Your existing call remains connected using the original camera."
+        : "Neural face engine stopped.";
+      aiEngineStats.textContent="No neural inference is running.";
     }
 
     function stopProcessedOutput() {
+      if (activeCall && processedStream) {
+        outputPreview.pause();
+        outputPreview.srcObject = null;
+        outputPreview.style.display = "none";
+        stopOutputButton.disabled = true;
+        outputButton.disabled = true;
+        status.textContent = "Local preview hidden. The processed video and microphone remain active for your call.";
+        return;
+      }
       stopVoiceProcessing();
       if (processedStream) processedStream.getTracks().forEach(track => track.stop());
       processedStream = null;
@@ -1352,19 +1400,23 @@
         return;
       }
       try {
-        stopProcessedOutput();
-        const useNeuralTrack = !!(neuralSwapTrack && neuralSwapTrack.readyState === "live");
-        processedStream = useNeuralTrack ? new MediaStream([neuralSwapTrack.clone()]) : canvas.captureStream(24);
-        processedVideoMode = useNeuralTrack ? "neural" : "camera";
-        const processedAudio = await buildVoiceTrack();
-        if (processedAudio) processedStream.addTrack(processedAudio);
+        // Keep one canvas-capture track for the full session. The canvas switches
+        // between raw camera and neural output, so WebRTC senders never go stale.
+        const existingStreamIsLive = processedStream && processedStream.getTracks().some(track => track.readyState === "live");
+        if (!existingStreamIsLive) {
+          processedStream = canvas.captureStream(30);
+          const processedAudio = await buildVoiceTrack();
+          if (processedAudio) processedStream.addTrack(processedAudio);
+        }
         outputPreview.srcObject = processedStream;
         outputPreview.style.display = "block";
         await outputPreview.play();
         await syncActiveCallTracks();
         outputButton.disabled = true;
         stopOutputButton.disabled = false;
-        status.textContent = "Processed camera output is running in this browser.";
+        status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
+          ? "Neural face-swapped camera output is running in this browser."
+          : "Processed camera output is running in this browser.";
       } catch (error) {
         stopProcessedOutput();
         status.textContent = `Could not start processed output: ${error?.message || "Try again."}`;
@@ -1389,8 +1441,7 @@
         callStatus.textContent = "Start your camera and microphone before calling.";
         return null;
       }
-      const expectedMode = neuralSwapTrack && neuralSwapTrack.readyState === "live" ? "neural" : "camera";
-      if (!processedStream || processedStream.getTracks().every(track => track.readyState !== "live") || processedVideoMode !== expectedMode) await startProcessedOutput();
+      if (!processedStream || processedStream.getTracks().every(track => track.readyState !== "live")) await startProcessedOutput();
       return processedStream;
     }
 
@@ -1532,6 +1583,7 @@
       closeActiveCall();
       stopProcessedOutput();
       if (neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack = null;
+      neuralOutputVideo.pause(); neuralOutputVideo.srcObject = null;
       if (neuralSwap) { try { neuralSwap.dispose(); } catch (_) {} } neuralSwap = null;
       stopAIButton.disabled = true;
       startAIButton.disabled = true;
