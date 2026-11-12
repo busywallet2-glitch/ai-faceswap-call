@@ -285,6 +285,12 @@
       gap:18px; align-items:start;
     }
     .modules-grid > .panel:nth-child(2) { grid-row:span 2; }
+    .ai-engine-panel { border-color:rgba(167,139,250,.28); background:linear-gradient(145deg,rgba(37,30,67,.55),rgba(14,18,30,.98)); }
+    .ai-engine-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .ai-engine-head .eyebrow { margin:0 0 5px; }
+    #startAIButton { width:100%; background:linear-gradient(120deg,#8b6cf0,#6248c3); }
+    #stopAIButton { width:100%; background:#20283a; border-color:var(--line); box-shadow:none; }
+    #aiProgress { width:100%; height:8px; margin:10px 0; accent-color:#a78bfa; }
     .hint { max-width:none; color:#8995ad; font-size:11px; line-height:1.65; }
     .panel > .hint { margin-top:12px; }
     #status,#callStatus,#translationStatus,#voicePreviewStatus,#bodyFrameStatus {
@@ -397,6 +403,17 @@
   </section>
 
   <section class="modules-grid" aria-label="Studio tools">
+  <div class="panel ai-engine-panel">
+    <div class="ai-engine-head"><div><span class="eyebrow">REAL AI PIPELINE</span><h2>Neural Face Swap Engine</h2></div><span class="preview-tag">EXPERIMENTAL GPU</span></div>
+    <p class="hint">This uses a trained identity-transfer model with face alignment and skin/occlusion blending. It replaces the old triangle-warp preview in the call output. First use downloads large model files; performance depends heavily on your device GPU.</p>
+    <label><input id="aiConsent" type="checkbox"> I confirm I have permission to use the uploaded face and will disclose altered video to call participants.</label>
+    <button id="startAIButton" type="button" disabled>Load Neural Face Engine</button>
+    <button id="stopAIButton" type="button" disabled>Stop Neural Engine</button>
+    <progress id="aiProgress" max="1" value="0" hidden></progress>
+    <p id="aiEngineStatus" class="hint" role="status">Upload a clear face photo, start the camera, and confirm permission to enable the neural engine.</p>
+    <p id="aiEngineStats" class="hint" aria-live="polite">GPU capability will be checked when you start the engine.</p>
+    <p class="hint">Model code and weights have separate licence terms. This integration is for personal, non-commercial use unless you obtain the required commercial permissions. On phones without WebGPU, live neural swapping may be unavailable or too slow.</p>
+  </div>
   <div class="panel">
     <h2>Processed Camera Output</h2>
     <p class="hint">Preview the camera image after browser-side processing. This output is a foundation for a browser video-call connection; it is not a system-wide virtual camera.</p>
@@ -499,8 +516,8 @@
       I have permission to use this person's face.
     </label>
     <label>
-      <input type="checkbox" id="showSwap" checked>
-      Show aligned face preview
+      <input type="checkbox" id="showSwap">
+      Show experimental mesh overlay (not the neural AI output)
     </label>
     <label>
       <input type="checkbox" id="showBodyPose">
@@ -513,7 +530,7 @@
   </div>
   </section>
 
-  <p class="hint">This is an experimental landmark-based face replacement, not a production-quality identity replacement. The built-in browser call is an initial WebRTC feature and depends on network compatibility. Only use a face image with the person's permission, and tell call participants when video is altered.</p>
+  <p class="hint">The neural engine is an experimental browser integration, not a guarantee of photorealism. The legacy landmark overlay is disabled by default. Browser calls share the processed output when the neural engine is running; otherwise they use the regular camera frame. Only use authorized face images and disclose altered video.</p>
 
   <script type="module">
     // Load third-party libraries only when the user starts tracking. This keeps the page UI usable even if a CDN is slow or unavailable.
@@ -570,6 +587,12 @@
     const englishCaption = document.getElementById("englishCaption");
     const translatedCaption = document.getElementById("translatedCaption");
     const translationStatus = document.getElementById("translationStatus");
+    const aiConsent = document.getElementById("aiConsent");
+    const startAIButton = document.getElementById("startAIButton");
+    const stopAIButton = document.getElementById("stopAIButton");
+    const aiProgress = document.getElementById("aiProgress");
+    const aiEngineStatus = document.getElementById("aiEngineStatus");
+    const aiEngineStats = document.getElementById("aiEngineStats");
 
     function setCameraPlaceholder(message) {
       cameraPlaceholder.textContent = message;
@@ -600,6 +623,10 @@
     let imageLoadToken = 0;
     let speechRecognition = null;
     let translationRequestToken = 0;
+    let neuralSwap = null;
+    let neuralSwapTrack = null;
+    let neuralSwapModule = null;
+    let neuralSwapStarting = false;
 
     function withTimeout(promise, milliseconds, message) {
       let timeoutId;
@@ -706,6 +733,7 @@
         canvas.height = video.videoHeight || 1280;
         stopButton.disabled = false;
         cameraFacing.disabled = true;
+        startAIButton.disabled = !(uploadedFace && permission.checked && aiConsent.checked);
         outputButton.disabled = typeof canvas.captureStream !== "function";
         const actualVideo = cameraStream.getVideoTracks()[0]?.getSettings?.();
         const actualSize = actualVideo?.width && actualVideo?.height
@@ -1140,6 +1168,53 @@
       speechSynthesis.speak(utterance);
     }
 
+    async function startNeuralFaceEngine() {
+      if (neuralSwapStarting) return;
+      if (!cameraStream || !cameraStream.getVideoTracks().length) { aiEngineStatus.textContent = "Start the camera before loading the neural engine."; return; }
+      if (!uploadedFace) { aiEngineStatus.textContent = "Upload a clear, front-facing face photo first."; return; }
+      if (!permission.checked || !aiConsent.checked) { aiEngineStatus.textContent = "Confirm permission for the uploaded face before continuing."; return; }
+      neuralSwapStarting = true; startAIButton.disabled = true; aiProgress.hidden = false; aiProgress.value = 0;
+      aiEngineStatus.textContent = "Checking browser GPU support…";
+      try {
+        if (!neuralSwapModule) neuralSwapModule = await import("https://esm.sh/browser-inswapper@0.1.0");
+        const createFaceSwap = neuralSwapModule.createFaceSwap, KNOWN_SHA256 = neuralSwapModule.KNOWN_SHA256, probe = neuralSwapModule.probe;
+        const caps = await probe();
+        aiEngineStats.textContent = "WebGPU: " + (caps.webgpu && caps.webgpu.available ? "available" : "not available") + " · WebNN: " + (caps.webnn ? "available" : "not available");
+        if (!(caps.webgpu && caps.webgpu.available) && !caps.webnn) throw new Error("This browser has no supported GPU inference backend. CPU fallback is not suitable for live swapping on most phones. Try updated Chrome on a supported device or use the desktop GPU setup.");
+        aiEngineStatus.textContent = "Loading neural models. The first download can be around 300 MB; keep this page open on a stable connection.";
+        const hf = "https://huggingface.co/";
+        const models = {
+          landmarker:{url:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",sha256:KNOWN_SHA256.landmarker},
+          swapperFp16:{url:hf+"facefusion/models-3.0.0/resolve/main/inswapper_128_fp16.onnx",sha256:KNOWN_SHA256.swapperFp16},
+          swapperFp32:{url:hf+"facefusion/models-3.0.0/resolve/main/inswapper_128.onnx",sha256:KNOWN_SHA256.swapperFp32},
+          arcface:{url:hf+"public-data/insightface/resolve/main/models/buffalo_l/w600k_r50.onnx",sha256:KNOWN_SHA256.arcface},
+          segmenter:{url:"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite",sha256:KNOWN_SHA256.segmenter}
+        };
+        neuralSwap = await createFaceSwap({models:models,backend:"auto",
+          onProgress:({model,loaded,total})=>{aiProgress.max=total||1;aiProgress.value=loaded;aiEngineStatus.textContent="Downloading/verifying "+model+" · "+Math.round(loaded/1000000)+" MB";},
+          onStats:({fps,inferMs,backend,latencyMs})=>{aiEngineStats.textContent=backend.toUpperCase()+" · "+Math.round(fps)+" output fps · "+Math.round(inferMs)+" ms inference · "+latencyMs+" ms latency";},
+          onLog:(message)=>console.info("[neural-face-swap]",message)
+        });
+        await neuralSwap.setIdentity({image:uploadedFace});
+        neuralSwapTrack = neuralSwap.process(cameraStream.getVideoTracks()[0],{maxFps:24});
+        aiEngineStatus.textContent = "Neural face replacement is active. Enable Processed Camera Output to preview it or share it in a call.";
+        stopAIButton.disabled = false; outputButton.disabled = false;
+      } catch(error) {
+        console.error("Neural face engine could not start.",error);
+        aiEngineStatus.textContent = "Neural engine unavailable: "+(error && error.message ? error.message : "Check browser support, model access, and connection.");
+        if(neuralSwap){try{neuralSwap.dispose();}catch(_){} } neuralSwap=null;
+        if(neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack=null;
+      } finally { neuralSwapStarting=false; aiProgress.hidden=true; startAIButton.disabled=!(cameraStream&&uploadedFace&&permission.checked&&aiConsent.checked); }
+    }
+
+    function stopNeuralFaceEngine() {
+      if(neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack=null;
+      if(neuralSwap){try{neuralSwap.dispose();}catch(_){} } neuralSwap=null;
+      stopProcessedOutput(); stopAIButton.disabled=true;
+      startAIButton.disabled=!(cameraStream&&uploadedFace&&permission.checked&&aiConsent.checked);
+      aiEngineStatus.textContent="Neural face engine stopped."; aiEngineStats.textContent="No neural inference is running.";
+    }
+
     function stopProcessedOutput() {
       stopVoiceProcessing();
       if (processedStream) processedStream.getTracks().forEach(track => track.stop());
@@ -1158,7 +1233,9 @@
       }
       try {
         stopProcessedOutput();
-        processedStream = canvas.captureStream(24);
+        processedStream = neuralSwapTrack && neuralSwapTrack.readyState === "live"
+          ? new MediaStream([neuralSwapTrack.clone()])
+          : canvas.captureStream(24);
         const processedAudio = await buildVoiceTrack();
         if (processedAudio) processedStream.addTrack(processedAudio);
         outputPreview.srcObject = processedStream;
@@ -1321,6 +1398,10 @@
       if (activeCall) { try { activeCall.close(); } catch (_) {} }
       closeActiveCall();
       stopProcessedOutput();
+      if (neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack = null;
+      if (neuralSwap) { try { neuralSwap.dispose(); } catch (_) {} } neuralSwap = null;
+      stopAIButton.disabled = true;
+      startAIButton.disabled = !(uploadedFace && permission.checked && aiConsent.checked);
       if (animationFrame) cancelAnimationFrame(animationFrame);
       animationFrame = null;
       lastPoseLandmarks = null;
@@ -1387,6 +1468,7 @@
             return;
           }
           uploadedFace = image;
+          startAIButton.disabled = !(cameraStream && permission.checked && aiConsent.checked);
           facePreview.src = imageObjectUrl;
           facePreview.style.display = "block";
           clearFaceButton.disabled = false;
@@ -1419,6 +1501,12 @@
         ? "Permission confirmed. Start the camera or continue tracking."
         : "Permission not confirmed. Face alignment preview is disabled.";
     });
+    aiConsent.addEventListener("change", () => {
+      startAIButton.disabled = !(cameraStream && uploadedFace && permission.checked && aiConsent.checked);
+      if (!aiConsent.checked && neuralSwap) stopNeuralFaceEngine();
+    });
+    startAIButton.addEventListener("click", startNeuralFaceEngine);
+    stopAIButton.addEventListener("click", stopNeuralFaceEngine);
     showSwap.addEventListener("change", () => {
       if (!showSwap.checked) {
         ctx.setTransform(1,0,0,1,0,0);
