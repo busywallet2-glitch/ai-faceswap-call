@@ -122,7 +122,12 @@ const required = [
   "id=\"executionProvider\"",
   "id=\"benchmarkMode\"",
   "function buildEngineIni()",
-  "function engineLaunchCommand(benchmark=false)"
+  "function engineLaunchCommand(benchmark=false)",
+  "id=\"selectorAgeStart\"",
+  "id=\"selectorAgeEnd\"",
+  "face_selector_age_start",
+  "face_selector_age_end",
+  "selectedOptions).map(option => option.value).join(\" \")"
 
 ];
 
