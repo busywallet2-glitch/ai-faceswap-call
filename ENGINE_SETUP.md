@@ -59,3 +59,10 @@ The upstream Docker project provides separate CPU, CUDA, TensorRT, and ROCm comp
 Only process your own face or a person's face with their explicit permission. Disclose altered video to call participants. Do not use this system for impersonation, identity checks, or non-consensual intimate imagery.
 
 FaceFusion code, individual model weights, and third-party components can have separate licenses and restrictions. Review each license before redistribution or commercial use. This project does not bundle third-party weights.
+
+
+## Live-call video continuity in the browser studio
+
+The browser studio keeps a single canvas-capture video track as its outgoing WebRTC track. The raw camera or the decoded neural-swap video is drawn into that canvas. This is deliberate: switching the neural engine on or off does not replace the active call's sender track, so it should not require a call reconnect. If the neural output track ends, the compositor falls back to the camera feed. This improves continuity, but it does not guarantee a call through restrictive networks; a properly configured TURN relay is still needed for reliable connectivity across all NAT/firewall combinations.
+
+The browser studio's neural engine and the separate local FaceFusion webcam process are currently two different processing paths. This page does not yet control a running FaceFusion Python process or import its UDP/V4L2 stream directly. The local FaceFusion webcam mode can publish UDP or V4L2 for OBS on supported operating systems, while the browser page uses its own browser neural pipeline. See the [official webcam guide](https://docs.facefusion.io/usage/deepfake-webcam).
