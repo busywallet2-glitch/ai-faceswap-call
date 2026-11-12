@@ -127,7 +127,14 @@ const required = [
   "id=\"selectorAgeEnd\"",
   "face_selector_age_start",
   "face_selector_age_end",
-  "selectedOptions).map(option => option.value).join(\" \")"
+  "selectedOptions).map(option => option.value).join(\" \")",
+  "const neuralOutputVideo = document.createElement(\"video\")",
+  "function getProcessedCanvasSource()",
+  "neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack])",
+  "canvas.captureStream(30)",
+  "Keep the processed canvas stream alive.",
+  "Local preview hidden. The processed video and microphone remain active for your call.",
+  "processedVideoMode !== expectedMode"
 
 ];
 
