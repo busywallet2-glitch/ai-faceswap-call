@@ -40,6 +40,8 @@
     }
     #status { color: #a7f3d0; font-weight: bold; }
     #outputPreview { display: none; width: 100%; max-width: 640px; margin: 12px auto; border-radius: 12px; background: #000; transform: scaleX(-1); }
+    #remotePreview { display: none; width: 100%; max-width: 640px; margin: 12px auto; border-radius: 12px; background: #000; }
+    .call-field { width: min(100%, 420px); padding: 12px; border-radius: 8px; border: 1px solid #4b5563; background: #111827; color: white; font-size: 16px; }
     label { display: block; margin: 14px auto; line-height: 1.5; }
     .hint { font-size: 13px; color: #9ca3af; }
   </style>
@@ -66,6 +68,22 @@
   </div>
 
   <div class="panel">
+    <h2>Private Browser Video Call</h2>
+    <p class="hint">Create a call ID and share it with the other person. Both people open this page, enable their camera and microphone, then connect using the ID. Calls use peer-to-peer WebRTC where network conditions allow.</p>
+    <button id="connectButton" type="button">Create My Call ID</button>
+    <p>Your call ID</p>
+    <input id="myPeerId" class="call-field" readonly placeholder="Tap Create My Call ID">
+    <p><input id="remotePeerId" class="call-field" placeholder="Enter the other person's call ID" autocomplete="off"></p>
+    <button id="callButton" type="button" disabled>Call</button>
+    <button id="answerButton" type="button" disabled>Answer Incoming Call</button>
+    <button id="declineButton" type="button" disabled>Decline</button>
+    <button id="hangupButton" type="button" disabled>Hang Up</button>
+    <p id="callStatus" role="status">Call service is not connected.</p>
+    <h3>Other person</h3>
+    <video id="remotePreview" autoplay playsinline></video>
+  </div>
+
+  <div class="panel">
     <h2>Upload an Authorized Face Image</h2>
     <input type="file" id="faceFile" accept="image/*">
     <button id="clearFaceButton" type="button" disabled>Remove Uploaded Image</button>
@@ -82,7 +100,7 @@
     <p class="hint">Use a clear, front-facing photo with one visible face. For full-body framing, place your phone farther away and keep your head clearly visible. The selected image is processed locally in this browser session.</p>
   </div>
 
-  <p class="hint">This is an experimental landmark-based face replacement, not a production-quality identity replacement. Processed output is available as a browser media stream, but this page is not yet connected to a video-call service. Only use a face image with the person's permission, and tell call participants when video is altered.</p>
+  <p class="hint">This is an experimental landmark-based face replacement, not a production-quality identity replacement. The built-in browser call is an initial WebRTC feature and depends on network compatibility. Only use a face image with the person's permission, and tell call participants when video is altered.</p>
 
   <script type="module">
     // Load third-party libraries only when the user starts tracking. This keeps the page UI usable even if a CDN is slow or unavailable.
@@ -105,6 +123,15 @@
     const outputButton = document.getElementById("outputButton");
     const stopOutputButton = document.getElementById("stopOutputButton");
     const outputPreview = document.getElementById("outputPreview");
+    const connectButton = document.getElementById("connectButton");
+    const myPeerId = document.getElementById("myPeerId");
+    const remotePeerId = document.getElementById("remotePeerId");
+    const callButton = document.getElementById("callButton");
+    const answerButton = document.getElementById("answerButton");
+    const declineButton = document.getElementById("declineButton");
+    const hangupButton = document.getElementById("hangupButton");
+    const callStatus = document.getElementById("callStatus");
+    const remotePreview = document.getElementById("remotePreview");
 
     function setCameraPlaceholder(message) {
       cameraPlaceholder.textContent = message;
@@ -115,6 +142,10 @@
     let imageLandmarker = null;
     let cameraStream = null;
     let processedStream = null;
+    let PeerClass = null;
+    let peer = null;
+    let activeCall = null;
+    let incomingCall = null;
     let uploadedFace = null;
     let sourcePoints = null;
     let triangles = null;
@@ -171,7 +202,7 @@
         status.textContent = "Starting camera and loading models...";
         await loadTrackers();
         cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" }, audio: false
+          video: { facingMode: "user" }, audio: { echoCancellation: true, noiseSuppression: true }
         });
         video.srcObject = cameraStream;
         await new Promise((resolve) => {
@@ -302,6 +333,7 @@
       try {
         stopProcessedOutput();
         processedStream = canvas.captureStream(24);
+        if (cameraStream) cameraStream.getAudioTracks().forEach(track => processedStream.addTrack(track));
         outputPreview.srcObject = processedStream;
         outputPreview.style.display = "block";
         await outputPreview.play();
@@ -312,6 +344,127 @@
         stopProcessedOutput();
         status.textContent = `Could not start processed output: ${error?.message || "Try again."}`;
       }
+    }
+
+    async function ensureProcessedStream() {
+      if (!cameraStream) {
+        callStatus.textContent = "Start your camera and microphone before calling.";
+        return null;
+      }
+      if (!processedStream || processedStream.getTracks().every(track => track.readyState !== "live")) {
+        await startProcessedOutput();
+      }
+      return processedStream;
+    }
+
+    function closeActiveCall() {
+      if (activeCall) {
+        try { activeCall.close(); } catch (_) {}
+      }
+      activeCall = null;
+      remotePreview.srcObject = null;
+      remotePreview.style.display = "none";
+      hangupButton.disabled = true;
+      callStatus.textContent = "Call ended.";
+    }
+
+    function attachCallHandlers(call) {
+      activeCall = call;
+      call.on("stream", remoteStream => {
+        remotePreview.srcObject = remoteStream;
+        remotePreview.style.display = "block";
+        remotePreview.play().catch(() => {});
+        callStatus.textContent = "Connected. Your processed camera and microphone are being shared.";
+        hangupButton.disabled = false;
+      });
+      call.on("close", closeActiveCall);
+      call.on("error", error => {
+        callStatus.textContent = "Call error: " + (error?.message || "Connection failed.");
+        closeActiveCall();
+      });
+    }
+
+    async function connectCallService() {
+      if (peer && !peer.destroyed) return peer;
+      try {
+        callStatus.textContent = "Connecting to the call service...";
+        if (!PeerClass) {
+          const module = await import("https://esm.sh/peerjs@1.5.4");
+          PeerClass = module.default;
+        }
+        peer = new PeerClass();
+        peer.on("open", id => {
+          myPeerId.value = id;
+          callStatus.textContent = "Ready. Share your call ID with the person you want to call.";
+          callButton.disabled = false;
+          connectButton.textContent = "Refresh Call ID";
+        });
+        peer.on("call", call => {
+          incomingCall = call;
+          callStatus.textContent = "Incoming call. Start your camera, then tap Answer Incoming Call.";
+          answerButton.disabled = false;
+          declineButton.disabled = false;
+        });
+        peer.on("error", error => {
+          callStatus.textContent = "Call service error: " + (error?.message || "Please retry.");
+        });
+        peer.on("disconnected", () => {
+          callStatus.textContent = "Call service disconnected. Tap Create My Call ID to reconnect.";
+          callButton.disabled = true;
+        });
+        return peer;
+      } catch (error) {
+        callStatus.textContent = "Could not load the call service. Check your connection and retry.";
+        return null;
+      }
+    }
+
+    async function placeCall() {
+      const target = remotePeerId.value.trim();
+      if (!target) {
+        callStatus.textContent = "Enter the other person's call ID first.";
+        return;
+      }
+      const service = await connectCallService();
+      if (!service) return;
+      const stream = await ensureProcessedStream();
+      if (!stream) return;
+      try {
+        callStatus.textContent = "Calling...";
+        const call = service.call(target, stream);
+        if (!call) {
+          callStatus.textContent = "The call could not be started. Check the call ID.";
+          return;
+        }
+        attachCallHandlers(call);
+      } catch (error) {
+        callStatus.textContent = "Could not place call: " + (error?.message || "Try again.");
+      }
+    }
+
+    async function answerCall() {
+      if (!incomingCall) return;
+      const stream = await ensureProcessedStream();
+      if (!stream) return;
+      const call = incomingCall;
+      incomingCall = null;
+      answerButton.disabled = true;
+      declineButton.disabled = true;
+      try {
+        call.answer(stream);
+        attachCallHandlers(call);
+        callStatus.textContent = "Answering call...";
+      } catch (error) {
+        callStatus.textContent = "Could not answer: " + (error?.message || "Try again.");
+      }
+    }
+
+    function declineCall() {
+      if (incomingCall) incomingCall.close();
+      incomingCall = null;
+      answerButton.disabled = true;
+      declineButton.disabled = true;
+      callStatus.textContent = "Incoming call declined.";
     }
 
     function stopCamera() {
@@ -416,11 +569,19 @@
       }
     });
     clearFaceButton.addEventListener("click", clearUploadedFace);
+    connectButton.addEventListener("click", connectCallService);
+    callButton.addEventListener("click", placeCall);
+    answerButton.addEventListener("click", answerCall);
+    declineButton.addEventListener("click", declineCall);
+    hangupButton.addEventListener("click", () => {
+      if (activeCall) activeCall.close();
+      closeActiveCall();
+    });
     startButton.addEventListener("click", startCamera);
     stopButton.addEventListener("click", stopCamera);
     outputButton.addEventListener("click", startProcessedOutput);
     stopOutputButton.addEventListener("click", stopProcessedOutput);
-    window.addEventListener("pagehide", stopCamera);
+    window.addEventListener("pagehide", () => { closeActiveCall(); if (peer) peer.destroy(); stopCamera(); });
   </script>
 </body>
 </html>
