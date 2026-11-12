@@ -1,7 +1,22 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+
+const moduleScript = html.match(/<script type="module">([\\s\\S]*?)<\\/script>/);
+assert.ok(moduleScript, "The app must include its browser module script.");
+const syntaxPath = join(tmpdir(), `busywallet-app-syntax-${process.pid}.mjs`);
+writeFileSync(syntaxPath, moduleScript[1], "utf8");
+const syntaxCheck = spawnSync(process.execPath, ["--check", syntaxPath], { encoding: "utf8" });
+unlinkSync(syntaxPath);
+assert.equal(
+  syntaxCheck.status,
+  0,
+  `The browser module must parse as valid JavaScript.\\n${syntaxCheck.stderr || syntaxCheck.stdout}`
+);
 
 const required = [
   'id="camera"',
