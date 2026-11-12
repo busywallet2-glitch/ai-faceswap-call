@@ -1378,9 +1378,9 @@
         outputPreview.pause();
         outputPreview.srcObject = null;
         outputPreview.style.display = "none";
-        stopOutputButton.disabled = true;
-        outputButton.disabled = true;
-        status.textContent = "Local preview hidden. The processed video and microphone remain active for your call.";
+        stopOutputButton.disabled = false;
+        outputButton.disabled = false;
+        status.textContent = "Local preview hidden. The processed video and microphone remain active for your call. Tap Enable Processed Output to show the local preview again.";
         return;
       }
       stopVoiceProcessing();
