@@ -81,15 +81,45 @@
     <button id="hangupButton" type="button" disabled>Hang Up</button>
     <button id="muteButton" type="button" disabled>Mute Microphone</button>
     <button id="cameraToggleButton" type="button" disabled>Pause Camera</button>
-    <h3>Live Voice Effects</h3>
-    <p class="hint">Choose a live audio effect. These effects change tone and texture; they do not imitate or clone another person's identity.</p>
-    <select id="voiceEffect" class="voice-select" aria-label="Live voice effect">
-      <option value="clean">Natural voice</option>
-      <option value="warm">Warm and deep tone</option>
-      <option value="bright">Bright tone</option>
-      <option value="radio">Radio voice</option>
-      <option value="robot">Robot effect</option>
+    <h3>Live Voice Studio</h3>
+    <p class="hint">English is the first voice-language option. Select an original voice style for the call. These are audio effects, not exact copies of celebrities or other real people.</p>
+    <label for="voiceEffect">Voice style sent to the other caller</label>
+    <select id="voiceEffect" class="voice-select" aria-label="Live voice style">
+      <optgroup label="Female voice styles">
+        <option value="female-soft">Soft feminine</option>
+        <option value="female-bold">Bold and confident</option>
+        <option value="female-bright">Bright and energetic</option>
+        <option value="female-mature">Smooth and mature</option>
+        <option value="female-expressive">Expressive and clear</option>
+      </optgroup>
+      <optgroup label="Male voice styles">
+        <option value="male-deep">Deep and mature</option>
+        <option value="male-warm">Warm and gentle</option>
+        <option value="male-clear">Clear and professional</option>
+        <option value="male-youthful">Youthful and energetic</option>
+        <option value="male-smooth">Smooth and low-pitched</option>
+      </optgroup>
+      <optgroup label="Special effects">
+        <option value="clean">Natural voice</option>
+        <option value="radio">Radio voice</option>
+        <option value="robot">Robot effect</option>
+      </optgroup>
     </select>
+    <p class="hint">Female and male presets adjust the transmitted audio's tone and equalization. They do not yet perform neural pitch conversion or identity-level voice cloning.</p>
+    <div class="panel" style="margin:14px auto;background:#111827">
+      <h3>English voice preview</h3>
+      <p class="hint">Preview uses voices already installed in your browser/device. It is a local sample and is not sent to the call.</p>
+      <select id="previewVoice" class="voice-select" aria-label="Device voice for preview">
+        <option value="">Default English voice</option>
+      </select>
+      <button id="previewVoiceButton" type="button">Play voice preview</button>
+      <p id="voicePreviewStatus" class="hint" role="status">English preview ready when your device has speech voices available.</p>
+    </div>
+    <div class="panel" style="margin:14px auto;background:#111827">
+      <h3>Live language support</h3>
+      <p><strong>First language:</strong> English</p>
+      <p class="hint">English is the initial language setting. Live speech transcription and automatic translation between callers still require a speech/translation service; this browser-only version does not claim that translation is active yet.</p>
+    </div>
     <p id="callStatus" role="status">Call service is not connected.</p>
     <h3>Other person</h3>
     <video id="remotePreview" autoplay playsinline></video>
@@ -147,6 +177,9 @@
     const muteButton = document.getElementById("muteButton");
     const cameraToggleButton = document.getElementById("cameraToggleButton");
     const voiceEffect = document.getElementById("voiceEffect");
+    const previewVoice = document.getElementById("previewVoice");
+    const previewVoiceButton = document.getElementById("previewVoiceButton");
+    const voicePreviewStatus = document.getElementById("voicePreviewStatus");
 
     function setCameraPlaceholder(message) {
       cameraPlaceholder.textContent = message;
@@ -390,13 +423,60 @@
     function applyVoiceEffect() {
       if (!voiceFilter || !voiceGain || !voiceShaper) return;
       const mode = voiceEffect.value;
+      const settings = {
+        "female-soft": [520, 1.8, 1.02],
+        "female-bold": [1050, 3.2, 1.0],
+        "female-bright": [2800, 3.5, 1.0],
+        "female-mature": [720, 2.2, 1.0],
+        "female-expressive": [1900, 2.8, 1.0],
+        "male-deep": [180, 2.8, 1.0],
+        "male-warm": [420, 3.0, 1.0],
+        "male-clear": [2100, 2.4, 1.0],
+        "male-youthful": [3000, 2.5, 1.0],
+        "male-smooth": [300, 2.7, 1.0]
+      };
+      const preset = settings[mode];
       voiceFilter.type = mode === "radio" ? "bandpass" : "peaking";
-      voiceFilter.frequency.value = mode === "bright" ? 2600 : mode === "warm" ? 650 : mode === "radio" ? 1500 : 1200;
+      voiceFilter.frequency.value = preset ? preset[0] : mode === "radio" ? 1500 : 1200;
       voiceFilter.Q.value = mode === "radio" ? 0.8 : 0.7;
-      voiceFilter.gain.value = mode === "warm" ? 4 : mode === "bright" ? 3 : 0;
-      voiceGain.gain.value = mode === "radio" ? 1.15 : 1;
+      voiceFilter.gain.value = preset ? preset[1] : mode === "warm" ? 4 : mode === "bright" ? 3 : 0;
+      voiceGain.gain.value = preset ? preset[2] : mode === "radio" ? 1.15 : 1;
       voiceShaper.curve = mode === "robot" ? makeRobotCurve() : null;
       voiceShaper.oversample = "2x";
+    }
+
+    function populateEnglishPreviewVoices() {
+      if (!("speechSynthesis" in window)) {
+        voicePreviewStatus.textContent = "Speech preview is not supported by this browser.";
+        previewVoiceButton.disabled = true;
+        return;
+      }
+      const voices = speechSynthesis.getVoices().filter(v => /^en([_-]|$)/i.test(v.lang));
+      previewVoice.innerHTML = '<option value="">Default English voice</option>';
+      voices.forEach((voice, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = voice.name + " — " + voice.lang;
+        previewVoice.appendChild(option);
+      });
+      voicePreviewStatus.textContent = voices.length
+        ? "English device voices loaded. Choose one to preview."
+        : "No English device voices are listed yet. Your browser may load them shortly.";
+      previewVoice.dataset.voiceNames = JSON.stringify(voices.map(v => v.name));
+    }
+
+    function playEnglishVoicePreview() {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance("Hello! This is a preview of the English voice selected in Busywallet.");
+      utterance.lang = "en";
+      const voices = speechSynthesis.getVoices().filter(v => /^en([_-]|$)/i.test(v.lang));
+      const index = previewVoice.value === "" ? -1 : Number(previewVoice.value);
+      if (index >= 0 && voices[index]) utterance.voice = voices[index];
+      utterance.onstart = () => { voicePreviewStatus.textContent = "Playing local English voice preview."; };
+      utterance.onend = () => { voicePreviewStatus.textContent = "Preview finished. This audio was not sent to your caller."; };
+      utterance.onerror = () => { voicePreviewStatus.textContent = "The device could not play this voice preview."; };
+      speechSynthesis.speak(utterance);
     }
 
     function stopProcessedOutput() {
@@ -685,6 +765,14 @@
     answerButton.addEventListener("click", answerCall);
     declineButton.addEventListener("click", declineCall);
     voiceEffect.addEventListener("change", applyVoiceEffect);
+    previewVoiceButton.addEventListener("click", playEnglishVoicePreview);
+    if ("speechSynthesis" in window) {
+      populateEnglishPreviewVoices();
+      speechSynthesis.addEventListener?.("voiceschanged", populateEnglishPreviewVoices);
+    } else {
+      voicePreviewStatus.textContent = "Speech preview is not supported by this browser.";
+      previewVoiceButton.disabled = true;
+    }
     muteButton.addEventListener("click", toggleMicrophone);
     cameraToggleButton.addEventListener("click", toggleCallCamera);
     hangupButton.addEventListener("click", () => {
