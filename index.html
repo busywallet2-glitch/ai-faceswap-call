@@ -1771,11 +1771,11 @@
     const engineConfigStatus = document.getElementById("engineConfigStatus");
     const engineConfigPreview = document.getElementById("engineConfigPreview");
     const engineValue = id => document.getElementById(id).value;
+    const engineOptional = id => engineValue(id).trim() === "" ? "" : engineValue(id).trim();
     const engineNumber = (id,min,max) => Math.min(max,Math.max(min,Number(engineValue(id)) || 0));
     function buildEngineIni() {
       const providers = engineValue("executionProvider") === "auto" ? "" : engineValue("executionProvider");
       const deviceIds = engineValue("executionDevices").trim().replace(/[^0-9 ,]/g,"").replace(/\\s+/g," ");
-      const optional = (id) => engineValue(id).trim() === "" ? "" : engineValue(id).trim();
       const lines = [
         "[processors]",
         "face_swapper_model = " + engineValue("swapModel"),
@@ -1788,7 +1788,8 @@
         "",
         "[face_selector]",
         "face_selector_mode = " + engineValue("selectorMode"),
-        "face_selector_order = " + engineValue("selectorOrder"),\n        "face_selector_age_start = " + (optional("selectorAgeStart") || "None"),\n        "face_selector_age_end = " + (optional("selectorAgeEnd") || "None"),
+        "face_selector_order = " + engineValue("selectorOrder"),
+        "face_selector_age_start = " + (engineOptional("selectorAgeStart") || "None"),\n        "face_selector_age_end = " + (engineOptional("selectorAgeEnd") || "None"),
         "reference_face_position = " + engineNumber("referencePosition",0,100000),
         "reference_face_distance = " + engineNumber("referenceDistance",0,1).toFixed(2),
         "reference_frame_number = " + engineNumber("referenceFrame",0,100000000),
@@ -1836,7 +1837,8 @@
         "--video-memory-strategy", engineValue("memoryStrategy"),
         "--log-level", engineValue("engineLogLevel")
       ];
-      if (provider !== "auto") args.push("--execution-providers",provider);\n      if (optional("selectorAgeStart")) args.push("--face-selector-age-start",engineNumber("selectorAgeStart",0,100));\n      if (optional("selectorAgeEnd")) args.push("--face-selector-age-end",engineNumber("selectorAgeEnd",0,100));
+      if (provider !== "auto") args.push("--execution-providers",provider);
+      if (engineOptional("selectorAgeStart")) args.push("--face-selector-age-start",engineNumber("selectorAgeStart",0,100));\n      if (engineOptional("selectorAgeEnd")) args.push("--face-selector-age-end",engineNumber("selectorAgeEnd",0,100));
       const ids=engineValue("executionDevices").trim().replace(/[^0-9 ,]/g,"").split(/[ ,]+/).filter(Boolean);
       if (ids.length) args.push("--execution-device-ids",...ids);
       if (benchmark) args.push("--benchmark-mode",engineValue("benchmarkMode"),"--benchmark-resolutions",...Array.from(document.getElementById("benchmarkResolutions").selectedOptions).map(option=>option.value),"--benchmark-cycle-count",engineNumber("benchmarkCycles",1,10));
