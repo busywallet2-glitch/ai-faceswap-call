@@ -87,6 +87,12 @@
     </div>
   </div>
 
+  <label for="cameraFacing">Camera for full-body framing
+    <select id="cameraFacing" class="voice-select">
+      <option value="user">Front camera</option>
+      <option value="environment">Back camera</option>
+    </select>
+  </label>
   <button id="framingGuideButton" type="button" aria-pressed="false">Show Full-Body Framing Guide</button>
   <p class="hint">Full-body framing keeps your head-to-toe image in view when your phone is positioned farther back. Face replacement currently tracks the face only; full-body identity replacement is still under development.</p>
   <button id="startButton">Start Camera</button>
@@ -236,6 +242,7 @@
     const cameraPlaceholder = document.getElementById("cameraPlaceholder");
     const framingGuide = document.getElementById("framingGuide");
     const framingGuideButton = document.getElementById("framingGuideButton");
+    const cameraFacing = document.getElementById("cameraFacing");
     const outputButton = document.getElementById("outputButton");
     const stopOutputButton = document.getElementById("stopOutputButton");
     const outputPreview = document.getElementById("outputPreview");
@@ -356,7 +363,8 @@
         status.textContent = "Starting camera and loading models...";
         await loadTrackers();
         cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" }, audio: { echoCancellation: true, noiseSuppression: true }
+          video: { facingMode: { ideal: cameraFacing.value }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: { echoCancellation: true, noiseSuppression: true }
         });
         video.srcObject = cameraStream;
         await new Promise((resolve) => {
@@ -368,6 +376,7 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         stopButton.disabled = false;
+        cameraFacing.disabled = true;
         outputButton.disabled = typeof canvas.captureStream !== "function";
         status.textContent = "Camera started. Looking for a face...";
         detectFace();
@@ -949,6 +958,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       startButton.disabled = false;
       stopButton.disabled = true;
+      cameraFacing.disabled = false;
       status.textContent = "Camera is stopped.";
     }
 
@@ -1086,7 +1096,15 @@
     stopButton.addEventListener("click", stopCamera);
     outputButton.addEventListener("click", startProcessedOutput);
     stopOutputButton.addEventListener("click", stopProcessedOutput);
-    window.addEventListener("pagehide", () => { stopEnglishCaptions(); closeActiveCall(); if (peer) peer.destroy(); stopCamera(); });
+    window.addEventListener("pagehide", () => {
+      stopEnglishCaptions();
+      closeActiveCall();
+      if (peer) peer.destroy();
+      stopCamera();
+      try { poseLandmarker?.close(); } catch (_) {}
+      try { videoLandmarker?.close(); } catch (_) {}
+      try { imageLandmarker?.close(); } catch (_) {}
+    });
   </script>
 </body>
 </html>
