@@ -217,6 +217,7 @@
     let poseLandmarker = null;
     let lastPoseLandmarks = null;
     let lastPoseDetectionTime = 0;
+    let smoothedFaceLandmarks = null;
 
     const video = document.getElementById("camera");
     const canvas = document.getElementById("overlay");
@@ -478,6 +479,25 @@
       ctx.restore();
     }
 
+    function smoothFaceLandmarks(current, previous, response = 0.72) {
+      if (!previous || previous.length !== current.length) {
+        return current.map(point => ({ ...point }));
+      }
+      return current.map((point, index) => {
+        const old = previous[index];
+        if (!old) return { ...point };
+        const smoothed = {
+          ...point,
+          x: old.x + (point.x - old.x) * response,
+          y: old.y + (point.y - old.y) * response
+        };
+        if (Number.isFinite(point.z) && Number.isFinite(old.z)) {
+          smoothed.z = old.z + (point.z - old.z) * response;
+        }
+        return smoothed;
+      });
+    }
+
     function detectFace() {
       if (!cameraStream) return;
       if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
@@ -502,12 +522,15 @@
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         if (results.faceLandmarks.length) {
-          const points = results.faceLandmarks[0];
-          warpFace(points);
+          smoothedFaceLandmarks = smoothFaceLandmarks(
+            results.faceLandmarks[0], smoothedFaceLandmarks
+          );
+          warpFace(smoothedFaceLandmarks);
           status.textContent = permission.checked && uploadedFace
             ? "Face detected. Experimental alignment preview active."
             : "Face detected. Tracking is working.";
         } else {
+          smoothedFaceLandmarks = null;
           status.textContent = "Looking for a face...";
         }
         if (showBodyPose.checked && lastPoseLandmarks) drawBodyPose(lastPoseLandmarks);
@@ -894,6 +917,7 @@
       animationFrame = null;
       lastPoseLandmarks = null;
       lastPoseDetectionTime = 0;
+      smoothedFaceLandmarks = null;
       if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
       cameraStream = null;
       video.srcObject = null;
