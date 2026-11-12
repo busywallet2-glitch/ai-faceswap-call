@@ -704,6 +704,7 @@
     const declineButton = document.getElementById("declineButton");
     const hangupButton = document.getElementById("hangupButton");
     const callStatus = document.getElementById("callStatus");
+    const networkStatus = document.getElementById("networkStatus");
     const remotePreview = document.getElementById("remotePreview");
     const muteButton = document.getElementById("muteButton");
     const cameraToggleButton = document.getElementById("cameraToggleButton");
@@ -1515,7 +1516,8 @@
         const turnUrl = document.getElementById("turnServerUrl").value.trim();
         const turnUsername = document.getElementById("turnServerUsername").value.trim();
         const turnCredential = document.getElementById("turnServerCredential").value;
-        if (turnUrl && (!/^turns?:/i.test(turnUrl) || !turnUsername || !turnCredential)) {
+        const hasTurnSettings = Boolean(turnUrl || turnUsername || turnCredential);
+        if (hasTurnSettings && (!/^turns?:/i.test(turnUrl) || !turnUsername || !turnCredential)) {
           networkStatus.textContent = "Enter a valid turn:/turns: URL, username, and credential together, or leave all three blank.";
           callStatus.textContent = "TURN settings are incomplete.";
           return null;
