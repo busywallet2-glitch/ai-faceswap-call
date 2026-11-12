@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Face Tracking Studio</title>
+  <title>Busywallet AI Face Swap & Video Call</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -47,7 +47,7 @@
   </style>
 </head>
 <body>
-  <h1>Face Tracking Studio</h1>
+  <h1>Busywallet AI Face Swap</h1>
   <p>Live camera with consent-based face replacement and processed video output.</p>
 
   <div class="camera-box">
@@ -333,7 +333,7 @@
       try {
         stopProcessedOutput();
         processedStream = canvas.captureStream(24);
-        if (cameraStream) cameraStream.getAudioTracks().forEach(track => processedStream.addTrack(track));
+        if (cameraStream) cameraStream.getAudioTracks().forEach(track => processedStream.addTrack(track.clone()));
         outputPreview.srcObject = processedStream;
         outputPreview.style.display = "block";
         await outputPreview.play();
@@ -468,6 +468,8 @@
     }
 
     function stopCamera() {
+      if (activeCall) { try { activeCall.close(); } catch (_) {} }
+      closeActiveCall();
       stopProcessedOutput();
       if (animationFrame) cancelAnimationFrame(animationFrame);
       animationFrame = null;
