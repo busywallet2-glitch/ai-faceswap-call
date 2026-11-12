@@ -1227,7 +1227,7 @@
     }
 
     async function startProcessedOutput() {
-      if (!cameraStream || typeof canvas.captureStream !== "function") {
+      if (!cameraStream || (!neuralSwapTrack && typeof canvas.captureStream !== "function")) {
         status.textContent = "Start the camera first. Processed output is not supported in this browser.";
         return;
       }
@@ -1451,9 +1451,11 @@
         return;
       }
       permission.checked = false;
+      if (neuralSwap) stopNeuralFaceEngine();
       uploadedFace = null;
       sourcePoints = null;
       triangles = null;
+      startAIButton.disabled = true;
       const currentLoadToken = ++imageLoadToken;
       try {
         await loadTrackers();
@@ -1500,6 +1502,8 @@
       status.textContent = permission.checked
         ? "Permission confirmed. Start the camera or continue tracking."
         : "Permission not confirmed. Face alignment preview is disabled.";
+      startAIButton.disabled = !(cameraStream && uploadedFace && permission.checked && aiConsent.checked);
+      if (!permission.checked && neuralSwap) stopNeuralFaceEngine();
     });
     aiConsent.addEventListener("change", () => {
       startAIButton.disabled = !(cameraStream && uploadedFace && permission.checked && aiConsent.checked);
