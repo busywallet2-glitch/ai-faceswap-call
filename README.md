@@ -72,7 +72,7 @@ This is an **experimental prototype, not a finished or production-ready face-swa
 3. Upload one clear, front-facing portrait of a person who has explicitly agreed to this use.
 4. Tick both the face permission and neural-engine consent checkboxes.
 5. Press **Load Neural Face Engine** and wait for the model downloads and integrity checks to finish. Review the GPU and FPS readout before relying on the output.
-6. Enable **Processed Camera Output** or start a browser call to share the neural video track. The old landmark overlay is separate and remains off by default.
+6. Enable **Processed Camera Output** or start a browser call. The neural output is composited into a persistent canvas track, so switching the engine on/off does not intentionally replace the WebRTC sender track. The old landmark overlay is separate and remains off by default.
 4. To test calling, create a call ID on one device, share it with a consenting person, and use that ID from the second browser. Both sides must allow camera/microphone permissions.
 5. To test translated captions, select a target language, tick the translation consent checkbox, and start English captions.
 6. Stop the camera, call, captions, and microphone when finished.
