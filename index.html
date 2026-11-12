@@ -530,7 +530,112 @@
   </div>
   </section>
 
-  <p class="hint">The neural engine is an experimental browser integration, not a guarantee of photorealism. The legacy landmark overlay is disabled by default. Browser calls share the processed output when the neural engine is running; otherwise they use the regular camera frame. Only use authorized face images and disclose altered video.</p>
+  
+  <section class="panel" id="engineConsole" aria-labelledby="engineConsoleTitle" style="margin-top:18px">
+    <div class="ai-engine-head">
+      <div><span class="eyebrow">LOCAL GPU ENGINE PROFILE</span><h2 id="engineConsoleTitle">Face Swapper Control Center</h2></div>
+      <span class="preview-tag">CONFIG BUILDER</span>
+    </div>
+    <p class="hint">Tune a FaceFusion-compatible local engine profile, then export a ready-to-use facefusion.ini and launch command. This control center prepares settings; it does not execute a local Python process from GitHub Pages. Run the engine on your own computer or GPU host.</p>
+    <div class="modules-grid" style="margin-top:14px">
+      <div class="panel">
+        <h3>Face swap quality</h3>
+        <label for="swapModel">Face swapper model
+          <select id="swapModel" class="voice-select">
+            <option>hyperswap_1a_256</option><option>hyperswap_1b_256</option><option>hyperswap_1c_256</option>
+            <option>inswapper_128</option><option>inswapper_128_fp16</option><option>alphaface_256</option>
+            <option>blendswap_256</option><option>ghost_1_256</option><option>ghost_2_256</option><option>ghost_3_256</option>
+            <option>hififace_unofficial_256</option><option>simswap_256</option><option>simswap_unofficial_512</option><option>uniface_256</option>
+          </select>
+        </label>
+        <label for="swapPixelBoost">Pixel boost
+          <select id="swapPixelBoost" class="voice-select">
+            <option>128x128</option><option>256x256</option><option>384x384</option><option selected>512x512</option><option>768x768</option><option>1024x1024</option>
+          </select>
+        </label>
+        <label for="swapWeight">Face swap weight <strong id="swapWeightValue">0.50</strong>
+          <input id="swapWeight" type="range" min="0" max="1" step="0.05" value="0.5" style="width:100%;accent-color:#a78bfa">
+        </label>
+      </div>
+      <div class="panel">
+        <h3>Face detection and selection</h3>
+        <label for="landmarkerModel">Face landmarker
+          <select id="landmarkerModel" class="voice-select">
+            <option>2dfan4</option><option>many</option><option>hrffa</option><option>peppa_wutz</option>
+          </select>
+        </label>
+        <label for="landmarkerScore">Landmarker confidence <strong id="landmarkerScoreValue">0.50</strong>
+          <input id="landmarkerScore" type="range" min="0" max="1" step="0.05" value="0.5" style="width:100%;accent-color:#a78bfa">
+        </label>
+        <label for="selectorMode">Face selector mode
+          <select id="selectorMode" class="voice-select"><option>reference</option><option>one</option><option>many</option></select>
+        </label>
+        <label for="selectorOrder">Face selector order
+          <select id="selectorOrder" class="voice-select">
+            <option>large-small</option><option>small-large</option><option>left-right</option><option>right-left</option>
+            <option>top-bottom</option><option>bottom-top</option><option>best-worst</option><option>worst-best</option>
+          </select>
+        </label>
+        <label for="referenceDistance">Reference similarity <strong id="referenceDistanceValue">0.30</strong>
+          <input id="referenceDistance" type="range" min="0" max="1" step="0.05" value="0.3" style="width:100%;accent-color:#a78bfa">
+        </label>
+        <label for="referencePosition">Reference face position
+          <input id="referencePosition" class="call-field" type="number" min="0" step="1" value="0">
+        </label>
+        <label for="referenceFrame">Reference frame number
+          <input id="referenceFrame" class="call-field" type="number" min="0" step="1" value="0">
+        </label>
+      </div>
+      <div class="panel">
+        <h3>Execution and memory</h3>
+        <label for="executionProvider">Execution provider
+          <select id="executionProvider" class="voice-select">
+            <option value="auto">Auto detect</option><option>cpu</option><option>coreml</option><option>cuda</option>
+            <option>directml</option><option>migraphx</option><option>rocm</option><option>tensorrt</option>
+          </select>
+        </label>
+        <label for="executionDevices">Execution device IDs
+          <input id="executionDevices" class="call-field" value="0" autocomplete="off">
+        </label>
+        <label for="executionThreads">Execution threads
+          <input id="executionThreads" class="call-field" type="number" min="1" max="32" value="4">
+        </label>
+        <label for="memoryStrategy">Video memory strategy
+          <select id="memoryStrategy" class="voice-select"><option>strict</option><option>moderate</option><option>tolerant</option></select>
+        </label>
+      </div>
+      <div class="panel">
+        <h3>Benchmark and diagnostics</h3>
+        <label for="benchmarkMode">Benchmark mode
+          <select id="benchmarkMode" class="voice-select"><option>warm</option><option>cold</option></select>
+        </label>
+        <label for="benchmarkResolutions">Benchmark resolutions
+          <select id="benchmarkResolutions" class="voice-select">
+            <option value="240p">240p</option><option value="360p">360p</option><option value="540p">540p</option>
+            <option value="720p" selected>720p</option><option value="1080p">1080p</option><option value="1440p">1440p</option><option value="2160p">2160p</option>
+          </select>
+        </label>
+        <label for="benchmarkCycles">Benchmark cycles
+          <input id="benchmarkCycles" class="call-field" type="number" min="1" max="10" value="5">
+        </label>
+        <label for="engineLogLevel">Log level
+          <select id="engineLogLevel" class="voice-select"><option>info</option><option>warn</option><option>error</option><option>debug</option></select>
+        </label>
+        <label><input id="haltOnError" type="checkbox"> Halt on first processing error</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button id="exportEngineConfig" type="button">Download facefusion.ini</button>
+      <button id="copyEngineCommand" type="button">Copy launch command</button>
+      <button id="runEngineBenchmark" type="button">Build benchmark command</button>
+    </div>
+    <label for="engineConfigPreview">Generated configuration</label>
+    <textarea id="engineConfigPreview" class="call-field" rows="16" readonly spellcheck="false" style="font-family:ui-monospace,monospace;font-size:11px;white-space:pre;overflow:auto"></textarea>
+    <p id="engineConfigStatus" class="hint" role="status" aria-live="polite">Your profile is ready to configure. Export it and place facefusion.ini in your local FaceFusion configuration folder.</p>
+    <p class="hint">Compatibility note: FaceFusion releases can change model names, CLI flags, configuration keys and licensing. Verify the selected options against the exact engine version you install. Use only authorized source faces and disclose altered output.</p>
+  </section>
+
+<p class="hint">The neural engine is an experimental browser integration, not a guarantee of photorealism. The legacy landmark overlay is disabled by default. Browser calls share the processed output when the neural engine is running; otherwise they use the regular camera frame. Only use authorized face images and disclose altered video.</p>
 
   <script type="module">
     // Load third-party libraries only when the user starts tracking. This keeps the page UI usable even if a CDN is slow or unavailable.
@@ -1594,6 +1699,112 @@
     stopButton.addEventListener("click", stopCamera);
     outputButton.addEventListener("click", startProcessedOutput);
     stopOutputButton.addEventListener("click", stopProcessedOutput);
+
+    // Local FaceFusion profile builder. This exports configuration; browser pages cannot execute local CLI processes.
+    const engineConfigIds = [
+      "swapModel","swapPixelBoost","swapWeight","landmarkerModel","landmarkerScore",
+      "selectorMode","selectorOrder","referenceDistance","referencePosition","referenceFrame",
+      "executionProvider","executionDevices","executionThreads","memoryStrategy",
+      "benchmarkMode","benchmarkResolutions","benchmarkCycles","engineLogLevel","haltOnError"
+    ];
+    const engineConfigStatus = document.getElementById("engineConfigStatus");
+    const engineConfigPreview = document.getElementById("engineConfigPreview");
+    const engineValue = id => document.getElementById(id).value;
+    const engineNumber = (id,min,max) => Math.min(max,Math.max(min,Number(engineValue(id)) || 0));
+    function buildEngineIni() {
+      const providers = engineValue("executionProvider") === "auto" ? "" : engineValue("executionProvider");
+      const deviceIds = engineValue("executionDevices").trim().replace(/[^0-9 ,]/g,"").replace(/\\s+/g," ");
+      const optional = (id) => engineValue(id).trim() === "" ? "" : engineValue(id).trim();
+      const lines = [
+        "[processors]",
+        "face_swapper_model = " + engineValue("swapModel"),
+        "face_swapper_pixel_boost = " + engineValue("swapPixelBoost"),
+        "face_swapper_weight = " + engineNumber("swapWeight",0,1).toFixed(2),
+        "",
+        "[face_landmarker]",
+        "face_landmarker_model = " + engineValue("landmarkerModel"),
+        "face_landmarker_score = " + engineNumber("landmarkerScore",0,1).toFixed(2),
+        "",
+        "[face_selector]",
+        "face_selector_mode = " + engineValue("selectorMode"),
+        "face_selector_order = " + engineValue("selectorOrder"),
+        "reference_face_position = " + engineNumber("referencePosition",0,100000),
+        "reference_face_distance = " + engineNumber("referenceDistance",0,1).toFixed(2),
+        "reference_frame_number = " + engineNumber("referenceFrame",0,100000000),
+        "",
+        "[execution]",
+        "execution_device_ids = " + (deviceIds || "0"),
+        "execution_providers = " + providers,
+        "execution_thread_count = " + engineNumber("executionThreads",1,32),
+        "",
+        "[memory]",
+        "video_memory_strategy = " + engineValue("memoryStrategy"),
+        "",
+        "[benchmark]",
+        "benchmark_mode = " + engineValue("benchmarkMode"),
+        "benchmark_resolutions = " + engineValue("benchmarkResolutions"),
+        "benchmark_cycle_count = " + engineNumber("benchmarkCycles",1,10),
+        "",
+        "[misc]",
+        "log_level = " + engineValue("engineLogLevel"),
+        "halt_on_error = " + (document.getElementById("haltOnError").checked ? "True" : "False"),
+        ""
+      ];
+      return lines.join("\\n");
+    }
+    function updateEngineProfile() {
+      document.getElementById("swapWeightValue").textContent = engineNumber("swapWeight",0,1).toFixed(2);
+      document.getElementById("landmarkerScoreValue").textContent = engineNumber("landmarkerScore",0,1).toFixed(2);
+      document.getElementById("referenceDistanceValue").textContent = engineNumber("referenceDistance",0,1).toFixed(2);
+      engineConfigPreview.value = buildEngineIni();
+    }
+    function engineLaunchCommand(benchmark=false) {
+      const provider = engineValue("executionProvider");
+      const args = [
+        "python facefusion.py", benchmark ? "benchmark" : "run",
+        "--face-swapper-model", engineValue("swapModel"),
+        "--face-swapper-pixel-boost", engineValue("swapPixelBoost"),
+        "--face-swapper-weight", engineNumber("swapWeight",0,1).toFixed(2),
+        "--face-landmarker-model", engineValue("landmarkerModel"),
+        "--face-landmarker-score", engineNumber("landmarkerScore",0,1).toFixed(2),
+        "--face-selector-mode", engineValue("selectorMode"),
+        "--face-selector-order", engineValue("selectorOrder"),
+        "--reference-face-position", engineNumber("referencePosition",0,100000),
+        "--reference-face-distance", engineNumber("referenceDistance",0,1).toFixed(2),
+        "--reference-frame-number", engineNumber("referenceFrame",0,100000000),
+        "--execution-thread-count", engineNumber("executionThreads",1,32),
+        "--video-memory-strategy", engineValue("memoryStrategy"),
+        "--log-level", engineValue("engineLogLevel")
+      ];
+      if (provider !== "auto") args.push("--execution-providers",provider);
+      const ids=engineValue("executionDevices").trim().replace(/[^0-9 ,]/g,"").split(/[ ,]+/).filter(Boolean);
+      if (ids.length) args.push("--execution-device-ids",...ids);
+      if (benchmark) args.push("--benchmark-mode",engineValue("benchmarkMode"),"--benchmark-resolutions",engineValue("benchmarkResolutions"),"--benchmark-cycle-count",engineNumber("benchmarkCycles",1,10));
+      if (document.getElementById("haltOnError").checked) args.push("--halt-on-error");
+      return args.join(" ");
+    }
+    engineConfigIds.forEach(id => document.getElementById(id).addEventListener("input",updateEngineProfile));
+    engineConfigIds.forEach(id => document.getElementById(id).addEventListener("change",updateEngineProfile));
+    updateEngineProfile();
+    document.getElementById("exportEngineConfig").addEventListener("click", () => {
+      const blob = new Blob([buildEngineIni()],{type:"text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href=url; anchor.download="facefusion.ini"; anchor.click();
+      URL.revokeObjectURL(url);
+      engineConfigStatus.textContent="Configuration downloaded. Move facefusion.ini into your local FaceFusion configuration folder, then launch the engine on that computer.";
+    });
+    document.getElementById("copyEngineCommand").addEventListener("click", async () => {
+      const command=engineLaunchCommand(false);
+      try { await navigator.clipboard.writeText(command); engineConfigStatus.textContent="Launch command copied. Run it from your local FaceFusion installation folder."; }
+      catch (_) { engineConfigPreview.value=buildEngineIni()+"\\n\\n# Launch command\\n"+command; engineConfigStatus.textContent="Clipboard access is unavailable. The launch command has been added below the configuration."; }
+    });
+    document.getElementById("runEngineBenchmark").addEventListener("click", async () => {
+      const command=engineLaunchCommand(true);
+      try { await navigator.clipboard.writeText(command); engineConfigStatus.textContent="Benchmark command copied. Run it from your local FaceFusion installation folder; results depend on your GPU and model."; }
+      catch (_) { engineConfigPreview.value=buildEngineIni()+"\\n\\n# Benchmark command\\n"+command; engineConfigStatus.textContent="Clipboard access is unavailable. The benchmark command has been added below the configuration."; }
+    });
+
     window.addEventListener("pagehide", () => {
       stopEnglishCaptions();
       closeActiveCall();
