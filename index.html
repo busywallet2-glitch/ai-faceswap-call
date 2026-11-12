@@ -1423,7 +1423,7 @@
       if (neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack = null;
       if (neuralSwap) { try { neuralSwap.dispose(); } catch (_) {} } neuralSwap = null;
       stopAIButton.disabled = true;
-      startAIButton.disabled = !(uploadedFace && permission.checked && aiConsent.checked);
+      startAIButton.disabled = true;
       if (animationFrame) cancelAnimationFrame(animationFrame);
       animationFrame = null;
       lastPoseLandmarks = null;
