@@ -3,12 +3,15 @@
 **Live demo:** https://busywallet2-glitch.github.io/ai-faceswap-call/  
 **Source code:** https://github.com/busywallet2-glitch/ai-faceswap-call
 
-A mobile-first, consent-first browser prototype with a refreshed premium studio interface, face landmark alignment, experimental camera processing, browser-to-browser calling, basic microphone effects, and English speech captions with translated text.
+A mobile-first, consent-first browser studio with a premium interface, experimental GPU neural face replacement, camera processing, browser-to-browser calling, basic microphone effects, and English speech captions with translated text.
 
 ## Current features
 
 - Camera access begins only after the user chooses to start it.
 - MediaPipe Face Landmarker tracks a face in the camera stream.
+- An experimental neural face-replacement engine uses `browser-inswapper`, ONNX Runtime Web, an InsightFace identity model, and MediaPipe segmentation for face alignment and foreground-aware blending.
+- The neural engine checks GPU capabilities, verifies downloaded model files against SHA-256 fingerprints, reports model download progress and live inference performance, and checks the uploaded portrait for quality issues.
+- When the neural engine is active, processed output and browser calls can use its generated video track; switching the engine attempts to replace the active call's outgoing media tracks.
 - A user can upload a face image, confirm they have permission to use it, and preview experimental landmark/triangle alignment.
 - A full-body framing guide helps position the phone to keep the subject head-to-toe in view.
 - The camera can be switched between front and rear lenses before starting, making it easier to set up a tripod or full-body shot.
@@ -29,7 +32,9 @@ A mobile-first, consent-first browser prototype with a refreshed premium studio 
 
 This is an **experimental prototype, not a finished or production-ready face-swap or calling product**.
 
-- Face landmarks are temporally smoothed to reduce frame-to-frame jitter, but the face effect is still a basic landmark/triangle warp, not a neural identity-transfer model. It can distort and does not reliably handle large head turns, expressions, lighting, hair, glasses, or occlusion.
+- The legacy landmark/triangle warp remains available as an optional experimental overlay; it is not the neural replacement and should not be mistaken for realistic identity transfer.
+- The neural replacement is experimental and not guaranteed photorealistic. It depends on source-photo quality, pose, lighting, browser support, and GPU performance. The first run downloads several hundred MB of model files. CPU/WASM fallback is not suitable for live performance on most devices.
+- The neural model has not been end-to-end verified on the user's Android phone or across supported desktop GPUs. GitHub source checks do not prove live inference works in a particular browser.
 - Face replacement still affects the face only. The pose overlay tracks body landmarks but does not replace the whole body, clothing, or identity; the framing guide is only a positioning aid.
 - The voice presets are EQ/texture effects. They do **not** perform true pitch/formant conversion, gender conversion, or identity cloning. Local speech previews are not the caller's live microphone voice.
 - Do not clone or imitate a real person's identifiable voice without that person's explicit permission. Celebrity names are not provided as cloned voice presets.
@@ -42,9 +47,12 @@ This is an **experimental prototype, not a finished or production-ready face-swa
 
 ## How to try the browser prototype
 
-1. Open the live demo in a modern browser on an HTTPS connection.
+1. Open the live demo in a current Chrome or Edge browser on a device with supported WebGPU or WebNN.
 2. Allow camera access when prompted and press **Start Camera**.
-3. If testing face alignment, upload a clear front-facing image of a person who has explicitly agreed to this use, tick the permission confirmation, and enable the face effect.
+3. Upload one clear, front-facing portrait of a person who has explicitly agreed to this use.
+4. Tick both the face permission and neural-engine consent checkboxes.
+5. Press **Load Neural Face Engine** and wait for the model downloads and integrity checks to finish. Review the GPU and FPS readout before relying on the output.
+6. Enable **Processed Camera Output** or start a browser call to share the neural video track. The old landmark overlay is separate and remains off by default.
 4. To test calling, create a call ID on one device, share it with a consenting person, and use that ID from the second browser. Both sides must allow camera/microphone permissions.
 5. To test translated captions, select a target language, tick the translation consent checkbox, and start English captions.
 6. Stop the camera, call, captions, and microphone when finished.
@@ -72,7 +80,7 @@ The smoke test parses the browser module for JavaScript syntax and checks that k
 
 ## Remaining engineering work
 
-1. Replace the triangle warp with a robust, consent-based face replacement/segmentation pipeline and temporal stabilization.
+1. Test the new neural engine end-to-end on supported Android and desktop GPU devices, then improve temporal stabilization and tune quality/performance based on real captures.
 2. Add actual voice conversion only through a suitable model/service with explicit voice-owner consent, latency controls, and clear disclosure.
 3. Build a true speech-to-speech translation pipeline: both participants' speech recognition, translation, speech synthesis, echo prevention, language selection, and routed call audio.
 4. Improve WebRTC reliability with a properly configured TURN service and test network handoff/reconnection.
@@ -86,4 +94,4 @@ Desktop integration is the practical next platform step. See [DESKTOP_INTEGRATIO
 
 ## Project status
 
-**Prototype stage — refreshed premium interface and improved experimental face-mesh preview. Browser calling and text translation remain experimental. Not ready for production, realistic neural identity replacement, or WhatsApp/Signal camera integration.**
+**Prototype stage — premium interface plus an experimental GPU neural face-swap integration. The source code is committed, but successful live inference has not yet been verified on the user's device. Browser calling and text translation remain experimental. Not ready for production or WhatsApp/Signal camera integration.**
