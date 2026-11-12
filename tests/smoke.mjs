@@ -112,7 +112,6 @@ const required = [
   "neuralSwap.findFaces(uploadedFace)",
   "neuralSwap.process(cameraStream.getVideoTracks()[0]",
   "sender.replaceTrack(track)",
-  "processedVideoMode !== expectedMode",
   "aiConsent.checked = false",
   "id=\"engineConsole\"",
   "id=\"swapModel\"",
@@ -162,6 +161,11 @@ assert.ok(
 assert.ok(
   /URL\.revokeObjectURL\(photoUrl\)/.test(html),
   "Replacing or removing an uploaded image must release its object URL."
+);
+
+assert.ok(
+  !/processedVideoMode !== expectedMode/.test(html),
+  "Switching to the neural engine must not rebuild the outgoing WebRTC video stream."
 );
 
 console.log("Face Tracking Studio smoke tests passed.");
