@@ -2,6 +2,10 @@
 
 ## Face Swapper Control Center
 
+
+
+The FaceFusion documentation currently shows an inconsistent CLI flag for face-swapper weight (the argument label and example differ). The profile builder therefore stores the weight in the INI file and omits that ambiguous flag from the generated command. Verify the exact option supported by your installed release before using a CLI override.
+
 ### Starter profiles
 
 - [Balanced profile](profiles/busywallet-balanced.ini) — conservative 128×128 pixel boost and the supplied default swap weight.
