@@ -762,6 +762,7 @@
     let triangles = null;
     let animationFrame = null;
     let lastVideoTime = -1;
+    let lastFaceDetectionTime = 0;
     let photoUrl = null;
     let imageLoadToken = 0;
     let speechRecognition = null;
@@ -1085,9 +1086,22 @@
 
     function detectFace() {
       if (!cameraStream) return;
-      if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+
+      // Refresh the outgoing canvas independently of CPU landmark inference.
+      // This keeps the neural video track smooth even when face detection is slower.
+      if (video.readyState >= 2) {
+        ctx.setTransform(1,0,0,1,0,0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const processedSource = getProcessedCanvasSource();
+        try { ctx.drawImage(processedSource, 0, 0, canvas.width, canvas.height); }
+        catch (renderError) { console.warn("Processed preview frame was skipped.", renderError); }
+      }
+
+      if (video.readyState >= 2 && video.currentTime !== lastVideoTime &&
+          performance.now() - lastFaceDetectionTime >= 33) {
         lastVideoTime = video.currentTime;
         const frameTime = performance.now();
+        lastFaceDetectionTime = frameTime;
         const results = videoLandmarker.detectForVideo(video, frameTime);
         if (showBodyPose.checked && poseLandmarker && frameTime - lastPoseDetectionTime >= 100) {
           try {
@@ -1103,21 +1117,16 @@
           }
           lastPoseDetectionTime = frameTime;
         }
-        ctx.setTransform(1,0,0,1,0,0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // The canvas now contains the complete processed camera frame, not just a transparent overlay.
-        const processedSource = getProcessedCanvasSource();
-        ctx.drawImage(processedSource, 0, 0, canvas.width, canvas.height);
 
         if (results.faceLandmarks.length) {
           smoothedFaceLandmarks = smoothFaceLandmarks(
-            results.faceLandmarks[0], smoothedFaceLandmarks
+            results.faceLandmarks[0], smoothedFaceLandmarks, 0.58
           );
           if (!(neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2)) {
             warpFace(smoothedFaceLandmarks);
           }
           status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
-            ? "Neural face replacement is being composited into the live output."
+            ? "Neural face replacement is active in the live preview and call output."
             : permission.checked && uploadedFace
             ? "Face detected. Experimental alignment preview active."
             : "Face detected. Tracking is working.";
@@ -1125,8 +1134,9 @@
           smoothedFaceLandmarks = null;
           status.textContent = "Looking for a face...";
         }
-        if (showBodyPose.checked && lastPoseLandmarks) drawBodyPose(lastPoseLandmarks);
       }
+
+      if (showBodyPose.checked && lastPoseLandmarks) drawBodyPose(lastPoseLandmarks);
       animationFrame = requestAnimationFrame(detectFace);
     }
 
