@@ -11,6 +11,7 @@ A browser-based, consent-first prototype combining face landmark alignment, expe
 - MediaPipe Face Landmarker tracks a face in the camera stream.
 - A user can upload a face image, confirm they have permission to use it, and preview experimental landmark/triangle alignment.
 - A full-body framing guide helps position the phone to keep the subject head-to-toe in view.
+- The camera can be switched between front and rear lenses before starting, making it easier to set up a tripod or full-body shot.
 - Optional MediaPipe Pose Landmarker tracking draws a live skeleton over visible shoulders, arms, hips, and legs; pose tracking runs at a reduced rate to limit processing load.
 - A framing check uses head, shoulder, hip, and ankle landmarks to tell the user when to step back or adjust the camera so the full body is visible.
 - The uploaded face can be removed, and camera tracks are stopped when the camera is stopped or the page is closed.
