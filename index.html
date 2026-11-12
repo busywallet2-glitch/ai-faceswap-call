@@ -1733,7 +1733,7 @@
         "",
         "[face_selector]",
         "face_selector_mode = " + engineValue("selectorMode"),
-        "face_selector_order = " + engineValue("selectorOrder"),\n        "face_selector_age_start = " + optional("selectorAgeStart"),\n        "face_selector_age_end = " + optional("selectorAgeEnd"),
+        "face_selector_order = " + engineValue("selectorOrder"),\n        "face_selector_age_start = " + (optional("selectorAgeStart") || "None"),\n        "face_selector_age_end = " + (optional("selectorAgeEnd") || "None"),
         "reference_face_position = " + engineNumber("referencePosition",0,100000),
         "reference_face_distance = " + engineNumber("referenceDistance",0,1).toFixed(2),
         "reference_frame_number = " + engineNumber("referenceFrame",0,100000000),
