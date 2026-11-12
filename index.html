@@ -39,6 +39,7 @@
       background: #1f2937; border-radius: 12px;
     }
     #status { color: #a7f3d0; font-weight: bold; }
+    #outputPreview { display: none; width: 100%; max-width: 640px; margin: 12px auto; border-radius: 12px; background: #000; transform: scaleX(-1); }
     label { display: block; margin: 14px auto; line-height: 1.5; }
     .hint { font-size: 13px; color: #9ca3af; }
   </style>
@@ -55,6 +56,14 @@
 
   <button id="startButton">Start Camera</button>
   <button id="stopButton" disabled>Stop Camera</button>
+
+  <div class="panel">
+    <h2>Processed Camera Output</h2>
+    <p class="hint">Preview the camera image after browser-side processing. This output is a foundation for a browser video-call connection; it is not a system-wide virtual camera.</p>
+    <button id="outputButton" type="button" disabled>Enable Processed Output</button>
+    <button id="stopOutputButton" type="button" disabled>Stop Processed Output</button>
+    <video id="outputPreview" autoplay playsinline muted></video>
+  </div>
 
   <div class="panel">
     <h2>Upload an Authorized Face Image</h2>
@@ -93,6 +102,9 @@
     const showSwap = document.getElementById("showSwap");
     const status = document.getElementById("status");
     const cameraPlaceholder = document.getElementById("cameraPlaceholder");
+    const outputButton = document.getElementById("outputButton");
+    const stopOutputButton = document.getElementById("stopOutputButton");
+    const outputPreview = document.getElementById("outputPreview");
 
     function setCameraPlaceholder(message) {
       cameraPlaceholder.textContent = message;
@@ -102,6 +114,7 @@
     let videoLandmarker = null;
     let imageLandmarker = null;
     let cameraStream = null;
+    let processedStream = null;
     let uploadedFace = null;
     let sourcePoints = null;
     let triangles = null;
@@ -170,6 +183,7 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         stopButton.disabled = false;
+        outputButton.disabled = typeof canvas.captureStream !== "function";
         status.textContent = "Camera started. Looking for a face...";
         detectFace();
       } catch (error) {
@@ -234,6 +248,8 @@
         const results = videoLandmarker.detectForVideo(video, performance.now());
         ctx.setTransform(1,0,0,1,0,0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // The canvas now contains the complete processed camera frame, not just a transparent overlay.
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
         if (results.faceLandmarks.length) {
           const points = results.faceLandmarks[0];
@@ -248,7 +264,38 @@
       animationFrame = requestAnimationFrame(detectFace);
     }
 
+    function stopProcessedOutput() {
+      if (processedStream) processedStream.getTracks().forEach(track => track.stop());
+      processedStream = null;
+      outputPreview.pause();
+      outputPreview.srcObject = null;
+      outputPreview.style.display = "none";
+      outputButton.disabled = !cameraStream || typeof canvas.captureStream !== "function";
+      stopOutputButton.disabled = true;
+    }
+
+    async function startProcessedOutput() {
+      if (!cameraStream || typeof canvas.captureStream !== "function") {
+        status.textContent = "Start the camera first. Processed output is not supported in this browser.";
+        return;
+      }
+      try {
+        stopProcessedOutput();
+        processedStream = canvas.captureStream(24);
+        outputPreview.srcObject = processedStream;
+        outputPreview.style.display = "block";
+        await outputPreview.play();
+        outputButton.disabled = true;
+        stopOutputButton.disabled = false;
+        status.textContent = "Processed camera output is running in this browser.";
+      } catch (error) {
+        stopProcessedOutput();
+        status.textContent = `Could not start processed output: ${error?.message || "Try again."}`;
+      }
+    }
+
     function stopCamera() {
+      stopProcessedOutput();
       if (animationFrame) cancelAnimationFrame(animationFrame);
       animationFrame = null;
       if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
@@ -351,6 +398,8 @@
     clearFaceButton.addEventListener("click", clearUploadedFace);
     startButton.addEventListener("click", startCamera);
     stopButton.addEventListener("click", stopCamera);
+    outputButton.addEventListener("click", startProcessedOutput);
+    stopOutputButton.addEventListener("click", stopProcessedOutput);
     window.addEventListener("pagehide", stopCamera);
   </script>
 </body>
