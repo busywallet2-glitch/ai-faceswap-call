@@ -1770,7 +1770,6 @@
         "python facefusion.py", benchmark ? "benchmark" : "run",
         "--face-swapper-model", engineValue("swapModel"),
         "--face-swapper-pixel-boost", engineValue("swapPixelBoost"),
-        "--face-swapper-weight", engineNumber("swapWeight",0,1).toFixed(2),
         "--face-landmarker-model", engineValue("landmarkerModel"),
         "--face-landmarker-score", engineNumber("landmarkerScore",0,1).toFixed(2),
         "--face-selector-mode", engineValue("selectorMode"),
