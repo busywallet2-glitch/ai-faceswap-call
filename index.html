@@ -42,6 +42,7 @@
     #outputPreview { display: none; width: 100%; max-width: 640px; margin: 12px auto; border-radius: 12px; background: #000; transform: scaleX(-1); }
     #remotePreview { display: none; width: 100%; max-width: 640px; margin: 12px auto; border-radius: 12px; background: #000; }
     .call-field { width: min(100%, 420px); padding: 12px; border-radius: 8px; border: 1px solid #4b5563; background: #111827; color: white; font-size: 16px; }
+    .voice-select { width: min(100%, 420px); padding: 12px; border-radius: 8px; background: #111827; color: white; border: 1px solid #4b5563; font-size: 16px; }
     label { display: block; margin: 14px auto; line-height: 1.5; }
     .hint { font-size: 13px; color: #9ca3af; }
   </style>
@@ -80,6 +81,15 @@
     <button id="hangupButton" type="button" disabled>Hang Up</button>
     <button id="muteButton" type="button" disabled>Mute Microphone</button>
     <button id="cameraToggleButton" type="button" disabled>Pause Camera</button>
+    <h3>Live Voice Effects</h3>
+    <p class="hint">Choose a live audio effect. These effects change tone and texture; they do not imitate or clone another person's identity.</p>
+    <select id="voiceEffect" class="voice-select" aria-label="Live voice effect">
+      <option value="clean">Natural voice</option>
+      <option value="warm">Warm and deep tone</option>
+      <option value="bright">Bright tone</option>
+      <option value="radio">Radio voice</option>
+      <option value="robot">Robot effect</option>
+    </select>
     <p id="callStatus" role="status">Call service is not connected.</p>
     <h3>Other person</h3>
     <video id="remotePreview" autoplay playsinline></video>
@@ -136,6 +146,7 @@
     const remotePreview = document.getElementById("remotePreview");
     const muteButton = document.getElementById("muteButton");
     const cameraToggleButton = document.getElementById("cameraToggleButton");
+    const voiceEffect = document.getElementById("voiceEffect");
 
     function setCameraPlaceholder(message) {
       cameraPlaceholder.textContent = message;
@@ -146,6 +157,13 @@
     let imageLandmarker = null;
     let cameraStream = null;
     let processedStream = null;
+    let audioContext = null;
+    let voiceSource = null;
+    let voiceFilter = null;
+    let voiceCompressor = null;
+    let voiceGain = null;
+    let voiceShaper = null;
+    let voiceDestination = null;
     let PeerClass = null;
     let peer = null;
     let activeCall = null;
@@ -319,7 +337,70 @@
       animationFrame = requestAnimationFrame(detectFace);
     }
 
+    function stopVoiceProcessing() {
+      try { if (voiceSource) voiceSource.disconnect(); } catch (_) {}
+      try { if (voiceFilter) voiceFilter.disconnect(); } catch (_) {}
+      try { if (voiceCompressor) voiceCompressor.disconnect(); } catch (_) {}
+      try { if (voiceGain) voiceGain.disconnect(); } catch (_) {}
+      try { if (voiceShaper) voiceShaper.disconnect(); } catch (_) {}
+      try { if (voiceDestination) voiceDestination.disconnect(); } catch (_) {}
+      voiceSource = voiceFilter = voiceCompressor = voiceGain = voiceShaper = voiceDestination = null;
+      if (audioContext && audioContext.state !== "closed") audioContext.close().catch(() => {});
+      audioContext = null;
+    }
+
+    function makeRobotCurve() {
+      const curve = new Float32Array(2048);
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i * 2) / (curve.length - 1) - 1;
+        curve[i] = Math.tanh(3.5 * x);
+      }
+      return curve;
+    }
+
+    async function buildVoiceTrack() {
+      const mic = cameraStream?.getAudioTracks()[0];
+      if (!mic) return null;
+      stopVoiceProcessing();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return mic.clone();
+      audioContext = new AudioContextClass();
+      await audioContext.resume();
+      voiceSource = audioContext.createMediaStreamSource(new MediaStream([mic]));
+      voiceFilter = audioContext.createBiquadFilter();
+      voiceCompressor = audioContext.createDynamicsCompressor();
+      voiceGain = audioContext.createGain();
+      voiceShaper = audioContext.createWaveShaper();
+      voiceDestination = audioContext.createMediaStreamDestination();
+      voiceFilter.type = "peaking";
+      voiceFilter.frequency.value = 1200;
+      voiceFilter.Q.value = 0.8;
+      voiceCompressor.threshold.value = -22;
+      voiceCompressor.knee.value = 20;
+      voiceCompressor.ratio.value = 3;
+      voiceCompressor.attack.value = 0.006;
+      voiceCompressor.release.value = 0.15;
+      voiceGain.gain.value = 1;
+      voiceShaper.curve = null;
+      voiceSource.connect(voiceFilter).connect(voiceCompressor).connect(voiceGain).connect(voiceShaper).connect(voiceDestination);
+      applyVoiceEffect();
+      return voiceDestination.stream.getAudioTracks()[0];
+    }
+
+    function applyVoiceEffect() {
+      if (!voiceFilter || !voiceGain || !voiceShaper) return;
+      const mode = voiceEffect.value;
+      voiceFilter.type = mode === "radio" ? "bandpass" : "peaking";
+      voiceFilter.frequency.value = mode === "bright" ? 2600 : mode === "warm" ? 650 : mode === "radio" ? 1500 : 1200;
+      voiceFilter.Q.value = mode === "radio" ? 0.8 : 0.7;
+      voiceFilter.gain.value = mode === "warm" ? 4 : mode === "bright" ? 3 : 0;
+      voiceGain.gain.value = mode === "radio" ? 1.15 : 1;
+      voiceShaper.curve = mode === "robot" ? makeRobotCurve() : null;
+      voiceShaper.oversample = "2x";
+    }
+
     function stopProcessedOutput() {
+      stopVoiceProcessing();
       if (processedStream) processedStream.getTracks().forEach(track => track.stop());
       processedStream = null;
       outputPreview.pause();
@@ -337,7 +418,8 @@
       try {
         stopProcessedOutput();
         processedStream = canvas.captureStream(24);
-        if (cameraStream) cameraStream.getAudioTracks().forEach(track => processedStream.addTrack(track.clone()));
+        const processedAudio = await buildVoiceTrack();
+        if (processedAudio) processedStream.addTrack(processedAudio);
         outputPreview.srcObject = processedStream;
         outputPreview.style.display = "block";
         await outputPreview.play();
@@ -602,6 +684,7 @@
     callButton.addEventListener("click", placeCall);
     answerButton.addEventListener("click", answerCall);
     declineButton.addEventListener("click", declineCall);
+    voiceEffect.addEventListener("change", applyVoiceEffect);
     muteButton.addEventListener("click", toggleMicrophone);
     cameraToggleButton.addEventListener("click", toggleCallCamera);
     hangupButton.addEventListener("click", () => {
