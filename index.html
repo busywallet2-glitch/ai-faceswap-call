@@ -856,6 +856,8 @@
         startButton.disabled = true;
         setCameraPlaceholder("Opening your camera...");
         status.textContent = "Requesting camera and microphone permission...";
+        // Keep camera preview and face tracking available even when a device has
+        // no microphone or the user declines microphone access.
         cameraStream = await navigator.mediaDevices.getUserMedia({
           video: captureFraming.value === "portrait"
             ? {
@@ -869,9 +871,18 @@
                 width: { ideal: 1280 },
                 height: { ideal: 720 },
                 aspectRatio: { ideal: 16 / 9 }
-              },
-          audio: { echoCancellation: true, noiseSuppression: true }
+              }
         });
+        let microphoneUnavailable = false;
+        try {
+          const microphoneStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true }
+          });
+          microphoneStream.getAudioTracks().forEach(track => cameraStream.addTrack(track));
+        } catch (microphoneError) {
+          microphoneUnavailable = true;
+          console.warn("Microphone access is unavailable; camera preview can continue.", microphoneError);
+        }
         video.srcObject = cameraStream;
         await new Promise((resolve, reject) => {
           if (video.readyState >= 1) return resolve();
@@ -892,6 +903,9 @@
           ? ` ${actualVideo.width}×${actualVideo.height}.`
           : "";
         status.textContent = "Camera is live" + actualSize + " Loading face tracking in the background...";
+        if (microphoneUnavailable) {
+          status.textContent += " Microphone unavailable; preview and tracking work, but calls need microphone access.";
+        }
         // Show a live preview immediately. Slow model downloads no longer leave
         // the user staring at a loading screen or prevent the camera from opening.
         renderCameraOnly();
