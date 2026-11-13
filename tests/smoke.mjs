@@ -187,6 +187,11 @@ assert.ok(
   /Camera disconnected\. Your preview and call have stopped; reconnect the camera to continue\./.test(html),
   "An externally ended camera track must stop the active session and explain how to recover."
 );
+assert.ok(
+  /Requesting camera permission\.\.\./.test(html) &&
+  /Camera permission was denied\. Allow camera access in your browser settings and try again\./.test(html),
+  "Camera permission messaging must not imply microphone permission is required to start preview."
+);
 
 assert.ok(
   /permission\.checked = false/.test(html),
