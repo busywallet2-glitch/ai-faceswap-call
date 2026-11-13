@@ -181,6 +181,12 @@ assert.ok(
   /Microphone unavailable; preview and tracking work, but calls need microphone access\./.test(html),
   "The app must explain when camera preview works but microphone access is unavailable."
 );
+assert.ok(
+  /track\.addEventListener\("ended"/.test(html) &&
+  /cameraStream !== activeCameraStream/.test(html) &&
+  /Camera disconnected\. Your preview and call have stopped; reconnect the camera to continue\./.test(html),
+  "An externally ended camera track must stop the active session and explain how to recover."
+);
 
 assert.ok(
   /permission\.checked = false/.test(html),
