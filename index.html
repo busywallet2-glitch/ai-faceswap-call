@@ -873,6 +873,15 @@
                 aspectRatio: { ideal: 16 / 9 }
               }
         });
+        const activeCameraStream = cameraStream;
+        cameraStream.getVideoTracks().forEach(track => {
+          track.addEventListener("ended", () => {
+            if (cameraStream !== activeCameraStream) return;
+            stopCamera();
+            setCameraPlaceholder("The camera disconnected. Reconnect it and tap “Start Camera” to try again.");
+            status.textContent = "Camera disconnected. Your preview and call have stopped; reconnect the camera to continue.";
+          }, { once: true });
+        });
         let microphoneUnavailable = false;
         try {
           const microphoneStream = await navigator.mediaDevices.getUserMedia({
