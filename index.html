@@ -855,7 +855,7 @@
       try {
         startButton.disabled = true;
         setCameraPlaceholder("Opening your camera...");
-        status.textContent = "Requesting camera and microphone permission...";
+        status.textContent = "Requesting camera permission...";
         // Keep camera preview and face tracking available even when a device has
         // no microphone or the user declines microphone access.
         cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -936,7 +936,7 @@
         console.error(error);
         stopCamera();
         const message = error?.name === "NotAllowedError"
-          ? "Camera or microphone permission was denied. Allow access in your browser settings and try again."
+          ? "Camera permission was denied. Allow camera access in your browser settings and try again."
           : error?.name === "NotFoundError"
           ? "No camera or microphone was found on this device."
           : error?.name === "NotReadableError"
