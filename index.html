@@ -887,8 +887,16 @@
           const microphoneStream = await navigator.mediaDevices.getUserMedia({
             audio: { echoCancellation: true, noiseSuppression: true }
           });
-          microphoneStream.getAudioTracks().forEach(track => cameraStream.addTrack(track));
+          // The camera can disconnect while the browser is waiting for microphone
+          // permission. Never leave a newly granted microphone running in that case.
+          if (cameraStream !== activeCameraStream) {
+            microphoneStream.getTracks().forEach(track => track.stop());
+            return;
+          }
+          microphoneStream.getAudioTracks().forEach(track => activeCameraStream.addTrack(track));
         } catch (microphoneError) {
+          // A stale permission result must not replace the camera-disconnected status.
+          if (cameraStream !== activeCameraStream) return;
           microphoneUnavailable = true;
           console.warn("Microphone access is unavailable; camera preview can continue.", microphoneError);
         }
