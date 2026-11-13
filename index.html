@@ -1536,7 +1536,19 @@
     }
 
     async function connectCallService() {
-      if (peer && !peer.destroyed) return peer;
+      // PeerJS keeps a disconnected peer object alive. Reuse its identity and
+      // explicitly reconnect instead of silently returning a dead connection.
+      if (peer && !peer.destroyed) {
+        if (peer.disconnected) {
+          try {
+            callStatus.textContent = "Reconnecting to the call service...";
+            peer.reconnect();
+          } catch (error) {
+            callStatus.textContent = "Could not reconnect to the call service. Refresh the call ID and try again.";
+          }
+        }
+        return peer;
+      }
       try {
         callStatus.textContent = "Connecting to the call service...";
         if (!PeerClass) {
