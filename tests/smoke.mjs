@@ -169,8 +169,17 @@ assert.ok(
   "The stop-camera flow must stop media tracks."
 );
 assert.ok(
-  /audio:\s*\{\s*echoCancellation:\s*true/.test(html),
-  "The camera capture must request the microphone with echo cancellation for calling."
+  /getUserMedia\(\{\s*video:/.test(html),
+  "The camera preview must request video independently of microphone availability."
+);
+assert.ok(
+  /getUserMedia\(\{\s*audio:\s*\{\s*echoCancellation:\s*true/.test(html),
+  "The app must request microphone audio separately with echo cancellation for calling."
+);
+assert.ok(
+  /microphoneUnavailable/.test(html) &&
+  /Microphone unavailable; preview and tracking work, but calls need microphone access\./.test(html),
+  "The app must explain when camera preview works but microphone access is unavailable."
 );
 
 assert.ok(
