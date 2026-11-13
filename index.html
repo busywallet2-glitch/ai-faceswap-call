@@ -1416,7 +1416,7 @@
           throw new Error("The neural engine did not return a live video track.");
         }
         neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack]);
-        await neuralOutputVideo.play();
+        await withTimeout(neuralOutputVideo.play(), 15000, "The browser did not start playback for the neural output track.");
         await waitForNeuralVideoFrame();
         if (neuralSwapTrack.readyState !== "live" || neuralOutputVideo.readyState < 2 || !neuralOutputVideo.videoWidth) {
           throw new Error("The neural output track opened but did not produce a decoded video frame. The original camera is still available.");
