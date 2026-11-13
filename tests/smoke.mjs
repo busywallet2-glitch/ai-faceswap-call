@@ -182,6 +182,18 @@ assert.ok(
   "The app must explain when camera preview works but microphone access is unavailable."
 );
 assert.ok(
+  /if \(cameraStream !== activeCameraStream\) \{\s*microphoneStream\.getTracks\(\)\.forEach\(track => track\.stop\(\)\);\s*return;\s*\}/.test(html),
+  "A microphone granted after camera disconnect must be stopped immediately."
+);
+assert.ok(
+  /if \(cameraStream !== activeCameraStream\) return;\s*microphoneUnavailable = true/.test(html),
+  "A stale microphone permission result must not overwrite the camera-disconnected status."
+);
+assert.ok(
+  /microphoneStream\.getAudioTracks\(\)\.forEach\(track => activeCameraStream\.addTrack\(track\)\)/.test(html),
+  "Microphone tracks must be attached only to the camera session that requested them."
+);
+assert.ok(
   /track\.addEventListener\("ended"/.test(html) &&
   /cameraStream !== activeCameraStream/.test(html) &&
   /Camera disconnected\. Your preview and call have stopped; reconnect the camera to continue\./.test(html),
