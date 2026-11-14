@@ -87,16 +87,17 @@ assert.ok(
   /track\.addEventListener\("ended", \(\) => \{[\s\S]*?processedStream\?\.removeTrack\(audioTrack\)[\s\S]*?audioSender\.replaceTrack\(null\)/.test(html),
   "A disconnected microphone must be removed from the processed call stream and detached from the active sender."
 );
-const cameraReadyStatusIndex = html.lastIndexOf(
-  'status.textContent = "Camera and face tracking are ready. Looking for a face...";'
-);
-const microphoneReadyGuardIndex = html.indexOf(
-  "if (!getLiveMicrophoneTrack(cameraStream))",
-  cameraReadyStatusIndex
-);
+const cameraStartupStart = html.indexOf("async function startCamera()");
+const cameraStartupEnd = html.indexOf("function stopCamera()", cameraStartupStart);
 assert.ok(
-  cameraReadyStatusIndex >= 0 && microphoneReadyGuardIndex > cameraReadyStatusIndex,
-  "The ready status must retain a pending/unavailable microphone warning instead of hiding it."
+  cameraStartupStart >= 0 && cameraStartupEnd > cameraStartupStart,
+  "Camera startup must remain independently testable."
+);
+const cameraStartupSource = html.slice(cameraStartupStart, cameraStartupEnd);
+assert.match(
+  cameraStartupSource,
+  /status\.textContent = "Camera and face tracking are ready\. Looking for a face\.\.\.";[\s\S]*?if \(!getLiveMicrophoneTrack\(cameraStream\)\)\s*\{\s*status\.textContent \+= " Microphone access is still pending or unavailable; calls require microphone access\.";\s*\}/,
+  "The camera-ready status must preserve the pending/unavailable microphone warning in the camera startup flow."
 );
 assert.ok(
   /No camera was found on this device\./.test(html),
