@@ -702,6 +702,8 @@
     const clearFaceButton = document.getElementById("clearFaceButton");
     const permission = document.getElementById("permission");
     const showSwap = document.getElementById("showSwap");
+    // Always start with the legacy triangle-mesh preview disabled, even if the browser restores form state.
+    showSwap.checked = false;
     const showBodyPose = document.getElementById("showBodyPose");
     const bodyFrameStatus = document.getElementById("bodyFrameStatus");
     const status = document.getElementById("status");
