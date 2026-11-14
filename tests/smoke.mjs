@@ -88,7 +88,7 @@ assert.ok(
   "A disconnected microphone must be removed from the processed call stream and detached from the active sender."
 );
 assert.ok(
-  /Camera and face tracking are ready\. Looking for a face\.\.\.\s*if \(!getLiveMicrophoneTrack\(cameraStream\)\)/.test(html),
+  /Camera and face tracking are ready\. Looking for a face\.\.\.\s*;\s*if \(!getLiveMicrophoneTrack\(cameraStream\)\)/.test(html),
   "The ready status must retain a pending/unavailable microphone warning instead of hiding it."
 );
 assert.ok(
