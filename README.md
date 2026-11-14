@@ -38,7 +38,7 @@ A mobile-first, consent-first browser studio with a premium interface, experimen
 - Portrait and landscape capture modes request different aspect ratios; portrait mode is the default for head-to-toe framing. The preview stage adapts to the selected orientation and the app reports actual camera resolution when the device exposes it.
 - The interface uses a responsive dark studio layout, high-contrast controls, clearer camera staging, and mobile-friendly panels.
 - The face mesh preview now uses high-quality image resampling, a subtle color/contrast adjustment, and slight triangle overlap to reduce visible mesh gaps. This is a cosmetic improvement to the experimental warp, not realistic neural face replacement.
-- Optional MediaPipe Pose Landmarker tracking draws a live skeleton over visible shoulders, arms, hips, and legs; pose tracking runs at a reduced rate to limit processing load.
+- Optional MediaPipe Pose Landmarker tracking draws a smoothed live skeleton over visible shoulders, arms, hips, and legs; when the model returns a segmentation mask, a translucent person-silhouette overlay is added for framing diagnostics. Mask buffers are copied to the preview canvas and closed after each inference to limit memory use.
 - A framing check uses head, shoulder, hip, and ankle landmarks to tell the user when to step back or adjust the camera so the full body is visible.
 - The uploaded face can be removed, and camera tracks are stopped when the camera is stopped or the page is closed.
 - The processed canvas can be shared as a video track in a browser-to-browser PeerJS/WebRTC call.
@@ -55,7 +55,7 @@ This is an **experimental prototype, not a finished or production-ready face-swa
 - The legacy landmark/triangle warp remains available as an optional experimental overlay; it is not the neural replacement and should not be mistaken for realistic identity transfer.
 - The neural replacement is experimental and not guaranteed photorealistic. It depends on source-photo quality, pose, lighting, browser support, and GPU performance. The first run downloads several hundred MB of model files. CPU/WASM fallback is not suitable for live performance on most devices.
 - The neural model has not been end-to-end verified on the user's Android phone or across supported desktop GPUs. GitHub source checks do not prove live inference works in a particular browser.
-- Face replacement still affects the face only. The pose overlay tracks body landmarks but does not replace the whole body, clothing, or identity; the framing guide is only a positioning aid.
+- Face replacement still affects the face only. The pose and segmentation overlays track/visualize the visible person but do not replace the whole body, clothing, or identity; the framing guide is only a positioning aid.
 - The voice presets are EQ/texture effects. They do **not** perform true pitch/formant conversion, gender conversion, or identity cloning. Local speech previews are not the caller's live microphone voice.
 - Do not clone or imitate a real person's identifiable voice without that person's explicit permission. Celebrity names are not provided as cloned voice presets.
 - Speech recognition depends on browser support and may use browser-managed online services. Translation sends recognized text to MyMemory. Avoid confidential conversations and review third-party privacy terms.
