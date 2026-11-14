@@ -19,10 +19,10 @@ assert.equal(
 );
 
 const poseSmoothingMatch = html.match(
-  /function smoothPoseLandmarks\\(current, previous\\) \\{([\\s\\S]*?)\\n    \\}\\n\\n    function updateBodySegmentationMask/
+  /function smoothPoseLandmarks\(current, previous\) \{([\s\S]*?)\n    \}\n\n    function updateBodySegmentationMask/
 );
 assert.ok(poseSmoothingMatch, "The pose smoothing helper must remain independently testable.");
-const smoothPoseLandmarks = new Function("current", "previous", poseSmoothingMatch[1] + "\\n}");
+const smoothPoseLandmarks = new Function("current", "previous", poseSmoothingMatch[1] + "\n}");
 const firstPose = [
   { x: 0.2, y: 0.3, visibility: 0.9 },
   { x: 0.7, y: 0.6, visibility: 0.9 }
