@@ -138,9 +138,10 @@ assert.ok(
   "The app must disclose when the device returns a different orientation than requested."
 );
 assert.ok(
-  /Experimental triangle-mesh preview \(can distort face edges; not the AI swap\)/.test(html) &&
-    /Jagged edges are expected/.test(html),
-  "The experimental mesh overlay must be clearly distinguished from actual neural face replacement."
+  /Legacy triangle-mesh preview — disabled because it distorts the face/.test(html) &&
+    /showSwap\.disabled = true;/.test(html) &&
+    /showBodyPose\.checked = false;/.test(html),
+  "The distorted mesh and green body diagnostics must be disabled in the clean default preview."
 );
 
 const cameraReadyStatusIndex = html.lastIndexOf(
