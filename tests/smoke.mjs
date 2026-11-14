@@ -408,7 +408,6 @@ assert.ok(
   "Switching to the neural engine must not rebuild the outgoing WebRTC video stream."
 );
 
-console.log("Face Tracking Studio smoke tests passed.");
 
 const neuralEngineStart = html.indexOf("async function startNeuralFaceEngine() {");
 const neuralEngineEnd = html.indexOf("\n    function stopNeuralFaceEngine()", neuralEngineStart);
@@ -431,3 +430,5 @@ const stopCameraStart = html.indexOf("function stopCamera() {");
 assert.ok(stopCameraStart >= 0 &&
   html.slice(stopCameraStart, stopCameraStart + 150).includes("neuralSwapStartToken += 1;"),
   "Stopping the camera must invalidate any pending neural startup.");
+
+console.log("Face Tracking Studio smoke tests passed.");
