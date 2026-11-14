@@ -45,6 +45,50 @@ assert.equal(heldPose[0].x, filteredPose[0].x,
   "Low-confidence joint readings must not move a stable landmark.");
 
 
+
+const liveMicrophoneMatch = html.match(
+  /function getLiveMicrophoneTrack\(stream\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(liveMicrophoneMatch, "Call setup must expose a testable live-microphone check.");
+const getLiveMicrophoneTrack = new Function("stream", liveMicrophoneMatch[1] + "\n}");
+const liveMicrophone = { readyState: "live" };
+assert.equal(
+  getLiveMicrophoneTrack({ getAudioTracks: () => [{ readyState: "ended" }, liveMicrophone] }),
+  liveMicrophone,
+  "Call setup must select a live microphone track and ignore ended tracks."
+);
+assert.equal(
+  getLiveMicrophoneTrack({ getAudioTracks: () => [{ readyState: "ended" }] }),
+  null,
+  "An ended microphone track must not qualify a call as audio-ready."
+);
+assert.equal(getLiveMicrophoneTrack(null), null, "A missing camera stream must not qualify as audio-ready.");
+
+const callSetupSource = html.slice(
+  html.indexOf("async function ensureProcessedStream()"),
+  html.indexOf("function closeActiveCall()")
+);
+assert.ok(
+  /if \(!getLiveMicrophoneTrack\(cameraStream\)\)[\s\S]*?return null;/.test(callSetupSource),
+  "Calls must be blocked while microphone permission is pending or the microphone track has ended."
+);
+assert.ok(
+  /Microphone access is pending or unavailable\. Allow microphone access before starting or answering a call\./.test(callSetupSource),
+  "The call flow must explain how to restore microphone access."
+);
+assert.ok(
+  /track\.addEventListener\("ended", \(\) => \{[\s\S]*?processedStream\?\.removeTrack\(audioTrack\)[\s\S]*?audioSender\.replaceTrack\(null\)/.test(html),
+  "A disconnected microphone must be removed from the processed call stream and detached from the active sender."
+);
+assert.ok(
+  /Camera and face tracking are ready\. Looking for a face\.\.\.\s*if \(!getLiveMicrophoneTrack\(cameraStream\)\)/.test(html),
+  "The ready status must retain a pending/unavailable microphone warning instead of hiding it."
+);
+assert.ok(
+  /No camera was found on this device\./.test(html),
+  "Camera-only startup errors must not claim a microphone is missing."
+);
+
 const required = [
   'id="camera"',
   'id="cameraFacing"',
