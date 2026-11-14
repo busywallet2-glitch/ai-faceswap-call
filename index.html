@@ -1142,34 +1142,42 @@
         lastVideoTime = video.currentTime;
         const frameTime = performance.now();
         lastFaceDetectionTime = frameTime;
-        const results = videoLandmarker.detectForVideo(video, frameTime);
-        if (showBodyPose.checked && poseLandmarker && frameTime - lastPoseDetectionTime >= 100) {
-          try {
-            const poseResults = poseLandmarker.detectForVideo(video, frameTime);
-            lastPoseLandmarks = poseResults.landmarks?.[0] || null;
-            updateBodyFrameStatus(lastPoseLandmarks);
-          } catch (poseError) {
-            console.warn("Body tracking stopped after a processing error.", poseError);
-            try { poseLandmarker.close(); } catch (_) {}
-            poseLandmarker = null;
-            lastPoseLandmarks = null;
-            updateBodyFrameStatus(null);
+        try {
+          const results = videoLandmarker.detectForVideo(video, frameTime);
+          if (showBodyPose.checked && poseLandmarker && frameTime - lastPoseDetectionTime >= 100) {
+            try {
+              const poseResults = poseLandmarker.detectForVideo(video, frameTime);
+              lastPoseLandmarks = poseResults.landmarks?.[0] || null;
+              updateBodyFrameStatus(lastPoseLandmarks);
+            } catch (poseError) {
+              console.warn("Body tracking stopped after a processing error.", poseError);
+              try { poseLandmarker.close(); } catch (_) {}
+              poseLandmarker = null;
+              lastPoseLandmarks = null;
+              updateBodyFrameStatus(null);
+            }
+            lastPoseDetectionTime = frameTime;
           }
-          lastPoseDetectionTime = frameTime;
-        }
 
-        if (results.faceLandmarks.length) {
-          smoothedFaceLandmarks = smoothFaceLandmarks(
-            results.faceLandmarks[0], smoothedFaceLandmarks, 0.58
-          );
-          status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
-            ? "Neural face replacement is active in the live preview and call output."
-            : permission.checked && uploadedFace
-            ? "Face detected. Experimental alignment preview active."
-            : "Face detected. Tracking is working.";
-        } else {
+          if (results.faceLandmarks.length) {
+            smoothedFaceLandmarks = smoothFaceLandmarks(
+              results.faceLandmarks[0], smoothedFaceLandmarks, 0.58
+            );
+            status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
+              ? "Neural face replacement is active in the live preview and call output."
+              : permission.checked && uploadedFace
+              ? "Face detected. Experimental alignment preview active."
+              : "Face detected. Tracking is working.";
+          } else {
+            smoothedFaceLandmarks = null;
+            status.textContent = "Looking for a face...";
+          }
+        } catch (faceDetectionError) {
+          // A transient model/runtime error must not kill the animation loop or
+          // freeze the outgoing video canvas. Keep the camera preview running.
+          console.warn("Face detection skipped a frame after a processing error.", faceDetectionError);
           smoothedFaceLandmarks = null;
-          status.textContent = "Looking for a face...";
+          status.textContent = "Camera is live, but face tracking hit a temporary error. Retrying...";
         }
       }
 
