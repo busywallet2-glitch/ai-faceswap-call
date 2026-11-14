@@ -182,8 +182,13 @@ assert.ok(
   "The app must explain when camera preview works but microphone access is unavailable."
 );
 
+const cameraStartupSource = html.slice(
+  html.indexOf("async function startCamera()"),
+  html.indexOf("function stopCamera()")
+);
 assert.ok(
-  html.indexOf("renderCameraOnly();") < html.indexOf("navigator.mediaDevices.getUserMedia({\\n              audio:"),
+  cameraStartupSource.indexOf("renderCameraOnly();") <
+    cameraStartupSource.indexOf("audio: { echoCancellation: true"),
   "The camera preview must become live before the app requests microphone permission."
 );
 assert.ok(
