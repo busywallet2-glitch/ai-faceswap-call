@@ -57,7 +57,7 @@ const liveMicrophoneMatch = html.match(
   /function getLiveMicrophoneTrack\(stream\) \{([\s\S]*?)\n    \}/
 );
 assert.ok(liveMicrophoneMatch, "Call setup must expose a testable live-microphone check.");
-const getLiveMicrophoneTrack = new Function("stream", liveMicrophoneMatch[1] + "\n}");
+const getLiveMicrophoneTrack = new Function("stream", liveMicrophoneMatch[1]);
 const liveMicrophone = { readyState: "live" };
 assert.equal(
   getLiveMicrophoneTrack({ getAudioTracks: () => [{ readyState: "ended" }, liveMicrophone] }),
