@@ -7,7 +7,7 @@ const cameraStartupEnd = html.indexOf("function getPixelPoints(", cameraStartupS
 assert.ok(cameraStartupStart >= 0 && cameraStartupEnd > cameraStartupStart,
   "Camera startup must remain independently inspectable.");
 const cameraSessionGuardSource = html.slice(cameraStartupStart, cameraStartupEnd);
-assert.match(cameraSessionGuardSource, /const startToken = \+\+cameraStartToken;/,
+assert.ok(cameraSessionGuardSource.includes("const startToken = ++cameraStartToken;"),
   "Every camera startup must receive a unique session token.");
 assert.match(cameraSessionGuardSource, /if \(startToken !== cameraStartToken\) \{[\s\S]*?acquiredCameraStream\.getTracks\(\)\.forEach\(track => track\.stop\(\)\);[\s\S]*?return;/,
   "A camera stream granted after its session was cancelled must have every track stopped.");
