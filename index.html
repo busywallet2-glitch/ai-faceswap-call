@@ -883,23 +883,9 @@
           }, { once: true });
         });
         let microphoneUnavailable = false;
-        try {
-          const microphoneStream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: true, noiseSuppression: true }
-          });
-          // The camera can disconnect while the browser is waiting for microphone
-          // permission. Never leave a newly granted microphone running in that case.
-          if (cameraStream !== activeCameraStream) {
-            microphoneStream.getTracks().forEach(track => track.stop());
-            return;
-          }
-          microphoneStream.getAudioTracks().forEach(track => activeCameraStream.addTrack(track));
-        } catch (microphoneError) {
-          // A stale permission result must not replace the camera-disconnected status.
-          if (cameraStream !== activeCameraStream) return;
-          microphoneUnavailable = true;
-          console.warn("Microphone access is unavailable; camera preview can continue.", microphoneError);
-        }
+        // Start the video preview before asking for microphone permission. Some
+        // browsers keep getUserMedia pending while the user decides, so audio
+        // permission must never hold the camera preview or face tracking hostage.
         video.srcObject = cameraStream;
         await new Promise((resolve, reject) => {
           if (video.readyState >= 1) return resolve();
@@ -926,6 +912,29 @@
         // Show a live preview immediately. Slow model downloads no longer leave
         // the user staring at a loading screen or prevent the camera from opening.
         renderCameraOnly();
+
+        // Request call audio in the background after the preview is already live.
+        // A late grant is attached only to this camera session; stale tracks are stopped.
+        (async () => {
+          try {
+            const microphoneStream = await navigator.mediaDevices.getUserMedia({
+              audio: { echoCancellation: true, noiseSuppression: true }
+            });
+            if (cameraStream !== activeCameraStream) {
+              microphoneStream.getTracks().forEach(track => track.stop());
+              return;
+            }
+            microphoneStream.getAudioTracks().forEach(track => activeCameraStream.addTrack(track));
+          } catch (microphoneError) {
+            // A stale permission result must not replace the camera-disconnected status.
+            if (cameraStream !== activeCameraStream) return;
+            microphoneUnavailable = true;
+            console.warn("Microphone access is unavailable; camera preview can continue.", microphoneError);
+            if (!status.textContent.includes("Microphone unavailable")) {
+              status.textContent += " Microphone unavailable; preview and tracking work, but calls need microphone access.";
+            }
+          }
+        })();
 
         try {
           await loadTrackers();
