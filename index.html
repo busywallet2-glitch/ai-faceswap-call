@@ -751,6 +751,8 @@
     let videoLandmarker = null;
     let imageLandmarker = null;
     let cameraStream = null;
+    // Invalidates camera permission requests that finish after the user leaves or stops the session.
+    let cameraStartToken = 0;
     let processedStream = null;
     let audioContext = null;
     let voiceSource = null;
@@ -861,13 +863,14 @@
         status.textContent = "Camera access is unavailable in this browser or page context.";
         return;
       }
+      const startToken = ++cameraStartToken;
       try {
         startButton.disabled = true;
         setCameraPlaceholder("Opening your camera...");
         status.textContent = "Requesting camera permission...";
         // Keep camera preview and face tracking available even when a device has
         // no microphone or the user declines microphone access.
-        cameraStream = await navigator.mediaDevices.getUserMedia({
+        const acquiredCameraStream = await navigator.mediaDevices.getUserMedia({
           video: captureFraming.value === "portrait"
             ? {
                 facingMode: { ideal: cameraFacing.value },
@@ -882,6 +885,11 @@
                 aspectRatio: { ideal: 16 / 9 }
               }
         });
+        if (startToken !== cameraStartToken) {
+          acquiredCameraStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        cameraStream = acquiredCameraStream;
         const activeCameraStream = cameraStream;
         cameraStream.getVideoTracks().forEach(track => {
           track.addEventListener("ended", () => {
@@ -903,6 +911,7 @@
           video.onerror = () => { clearTimeout(timeout); reject(new Error("The browser could not read the camera stream.")); };
         });
         await video.play();
+        if (startToken !== cameraStartToken || cameraStream !== activeCameraStream) return;
         cameraPlaceholder.style.display = "none";
         canvas.width = video.videoWidth || 720;
         canvas.height = video.videoHeight || 1280;
@@ -982,7 +991,7 @@
 
         try {
           await loadTrackers();
-          if (!cameraStream) return;
+          if (startToken !== cameraStartToken || cameraStream !== activeCameraStream) return;
           if (animationFrame) cancelAnimationFrame(animationFrame);
           animationFrame = null;
           lastVideoTime = -1;
@@ -997,6 +1006,7 @@
           // Keep the camera preview active even when a third-party model/CDN is unavailable.
         }
       } catch (error) {
+        if (startToken !== cameraStartToken) return;
         console.error(error);
         stopCamera();
         const message = error?.name === "NotAllowedError"
@@ -1959,6 +1969,7 @@
     }
 
     function stopCamera() {
+      cameraStartToken += 1;
       if (activeCall) { try { activeCall.close(); } catch (_) {} }
       closeActiveCall();
       stopProcessedOutput();
