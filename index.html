@@ -1262,7 +1262,7 @@
               const segmentationMask = poseResults.segmentationMasks?.[0] || null;
               try {
                 if (detectedPose && segmentationMask) updateBodySegmentationMask(segmentationMask);
-                else if (!detectedPose) clearBodySegmentationMask();
+                else clearBodySegmentationMask();
               } finally {
                 if (segmentationMask && typeof segmentationMask.close === "function") {
                   segmentationMask.close();
