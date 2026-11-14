@@ -1,9 +1,3 @@
-import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import { spawnSync } from "node:child_process";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import assert from "node:assert/strict";
-
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 assert.match(html, /let cameraStartToken = 0;/,
@@ -13,14 +7,14 @@ const cameraStartupEnd = html.indexOf("function getPixelPoints(", cameraStartupS
 assert.ok(cameraStartupStart >= 0 && cameraStartupEnd > cameraStartupStart,
   "Camera startup must remain independently inspectable.");
 const cameraSessionGuardSource = html.slice(cameraStartupStart, cameraStartupEnd);
-assert.match(cameraSessionGuardSource, /const startToken = \\+\\+cameraStartToken;/,
+assert.match(cameraSessionGuardSource, /const startToken = \+\+cameraStartToken;/,
   "Every camera startup must receive a unique session token.");
-assert.match(cameraSessionGuardSource, /if \\(startToken !== cameraStartToken\\) \\{[\\s\\S]*?acquiredCameraStream\\.getTracks\\(\\)\\.forEach\\(track => track\\.stop\\(\\)\\);[\\s\\S]*?return;/,
+assert.match(cameraSessionGuardSource, /if \(startToken !== cameraStartToken\) \{[\s\S]*?acquiredCameraStream\.getTracks\(\)\.forEach\(track => track\.stop\(\)\);[\s\S]*?return;/,
   "A camera stream granted after its session was cancelled must have every track stopped.");
-assert.match(cameraSessionGuardSource, /startToken !== cameraStartToken \\|\\| cameraStream !== activeCameraStream/,
+assert.match(cameraSessionGuardSource, /startToken !== cameraStartToken \|\| cameraStream !== activeCameraStream/,
   "A stale camera startup must not continue after camera playback or tracker loading.");
 const stopCameraStart = html.indexOf("function stopCamera() {");
-assert.ok(stopCameraStart >= 0 && /cameraStartToken \\+= 1;/.test(html.slice(stopCameraStart, stopCameraStart + 180)),
+assert.ok(stopCameraStart >= 0 && /cameraStartToken \+= 1;/.test(html.slice(stopCameraStart, stopCameraStart + 180)),
   "Stopping the camera must invalidate any pending permission request.");
 
 const moduleScript = html.match(/<script type="module">([\s\S]*?)<\/script>/);
