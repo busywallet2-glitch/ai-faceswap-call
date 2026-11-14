@@ -322,7 +322,7 @@ assert.ok(
   "A stale microphone permission result must not overwrite the camera-disconnected status."
 );
 assert.ok(
-  /microphoneStream\.getAudioTracks\(\)\.forEach\(track => activeCameraStream\.addTrack\(track\)\)/.test(html),
+  /microphoneStream\.getAudioTracks\(\)\.forEach\(track => \{\s*activeCameraStream\.addTrack\(track\);/.test(html),
   "Microphone tracks must be attached only to the camera session that requested them."
 );
 assert.ok(
