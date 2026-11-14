@@ -84,10 +84,10 @@ const required = [
   'bodyFrameStatus.textContent = "Enable body tracking to check whether your full body is in frame."',
   "Full-body landmarks detected.",
   "Move farther back and show your head, shoulders, hips, and both feet.",
-  "function smoothFaceLandmarks(current, previous, response = 0.58)",
+  "function smoothFaceLandmarks(current, previous)",
   "const averageMovement = measuredPoints ? totalMovement / measuredPoints : 0",
   "const adaptiveResponse = Math.min(0.88, Math.max(0.28,",
-  "averageMovement * 10",
+  "0.30 + averageMovement * 14",
 
   "smoothedFaceLandmarks = smoothFaceLandmarks(",
   "warpFace(smoothedFaceLandmarks)",
