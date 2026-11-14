@@ -1105,20 +1105,40 @@
       ctx.restore();
     }
 
-    function smoothFaceLandmarks(current, previous, response = 0.72) {
+    function smoothFaceLandmarks(current, previous, response = 0.58) {
       if (!previous || previous.length !== current.length) {
         return current.map(point => ({ ...point }));
       }
+
+      // Adapt the filter to actual face movement: suppress tiny detector jitters,
+      // but increase responsiveness when the person turns or moves quickly.
+      let totalMovement = 0;
+      let measuredPoints = 0;
+      for (let index = 0; index < current.length; index++) {
+        const point = current[index];
+        const old = previous[index];
+        if (!point || !old || !Number.isFinite(point.x) ||
+            !Number.isFinite(point.y) || !Number.isFinite(old.x) ||
+            !Number.isFinite(old.y)) continue;
+        totalMovement += Math.hypot(point.x - old.x, point.y - old.y);
+        measuredPoints++;
+      }
+      const averageMovement = measuredPoints ? totalMovement / measuredPoints : 0;
+      const adaptiveResponse = Math.min(0.88, Math.max(0.28,
+        Math.max(response, 0.28) + averageMovement * 10
+      ));
+
       return current.map((point, index) => {
         const old = previous[index];
-        if (!old) return { ...point };
+        if (!old || !Number.isFinite(point.x) || !Number.isFinite(point.y) ||
+            !Number.isFinite(old.x) || !Number.isFinite(old.y)) return { ...point };
         const smoothed = {
           ...point,
-          x: old.x + (point.x - old.x) * response,
-          y: old.y + (point.y - old.y) * response
+          x: old.x + (point.x - old.x) * adaptiveResponse,
+          y: old.y + (point.y - old.y) * adaptiveResponse
         };
         if (Number.isFinite(point.z) && Number.isFinite(old.z)) {
-          smoothed.z = old.z + (point.z - old.z) * response;
+          smoothed.z = old.z + (point.z - old.z) * adaptiveResponse;
         }
         return smoothed;
       });
