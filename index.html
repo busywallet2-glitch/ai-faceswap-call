@@ -1075,7 +1075,9 @@
           point.y >= 0.01 && point.y <= 0.99;
       });
       bodyFrameStatus.textContent = visible
-        ? "Full-body landmarks detected. Keep a little space above your head and below your feet."
+        ? bodyMaskAvailable
+          ? "Full body detected. The person-silhouette mask and joint tracking are active."
+          : "Full body detected. Joint tracking is active; this browser did not return a silhouette mask."
         : "Part of your body is outside the frame or not clearly visible. Move farther back and show your head, shoulders, hips, and both feet.";
     }
 
@@ -1281,6 +1283,8 @@
               try { poseLandmarker.close(); } catch (_) {}
               poseLandmarker = null;
               lastPoseLandmarks = null;
+              smoothedPoseLandmarks = null;
+              clearBodySegmentationMask();
               updateBodyFrameStatus(null);
             }
             lastPoseDetectionTime = frameTime;
