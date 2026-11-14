@@ -18,6 +18,33 @@ assert.equal(
   `The browser module must parse as valid JavaScript.\\n${syntaxCheck.stderr || syntaxCheck.stdout}`
 );
 
+const poseSmoothingMatch = html.match(
+  /function smoothPoseLandmarks\\(current, previous\\) \\{([\\s\\S]*?)\\n    \\}\\n\\n    function updateBodySegmentationMask/
+);
+assert.ok(poseSmoothingMatch, "The pose smoothing helper must remain independently testable.");
+const smoothPoseLandmarks = new Function("current", "previous", poseSmoothingMatch[1] + "\\n}");
+const firstPose = [
+  { x: 0.2, y: 0.3, visibility: 0.9 },
+  { x: 0.7, y: 0.6, visibility: 0.9 }
+];
+const seededPose = smoothPoseLandmarks(firstPose, null);
+assert.notEqual(seededPose[0], firstPose[0], "Initial landmarks must be copied, not mutated.");
+const movedPose = [
+  { x: 0.8, y: 0.7, visibility: 0.9 },
+  { x: 0.6, y: 0.5, visibility: 0.9 }
+];
+const filteredPose = smoothPoseLandmarks(movedPose, seededPose);
+assert.ok(filteredPose[0].x > seededPose[0].x && filteredPose[0].x < movedPose[0].x,
+  "Reliable joint movement must be smoothed instead of jumping directly.");
+const weakPose = [
+  { x: 0.99, y: 0.99, visibility: 0.05 },
+  { x: 0.01, y: 0.01, visibility: 0.05 }
+];
+const heldPose = smoothPoseLandmarks(weakPose, filteredPose);
+assert.equal(heldPose[0].x, filteredPose[0].x,
+  "Low-confidence joint readings must not move a stable landmark.");
+
+
 const required = [
   'id="camera"',
   'id="cameraFacing"',
