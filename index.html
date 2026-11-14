@@ -538,8 +538,9 @@
     </label>
     <label>
       <input type="checkbox" id="showSwap">
-      Show experimental mesh overlay (not the neural AI output)
+      Experimental triangle-mesh preview (can distort face edges; not the AI swap)
     </label>
+    <p class="hint">The mesh preview is only a rough geometry test and can produce jagged edges. For actual identity transfer, load the Neural Face Swap Engine below.</p>
     <label>
       <input type="checkbox" id="showBodyPose">
       Show full-body pose tracking overlay
@@ -856,6 +857,18 @@
       }
     }
 
+    function fitCameraStageToActualVideo() {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return false;
+
+      // Match the preview window to the camera stream the device actually supplied.
+      // Some mobile cameras ignore the requested portrait ratio and return landscape frames.
+      cameraStage.style.aspectRatio = `${width} / ${height}`;
+      cameraStage.classList.toggle("landscape", width > height);
+      return true;
+    }
+
     function getProcessedCanvasSource() {
       return neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2
         ? neuralOutputVideo
@@ -872,6 +885,7 @@
     }
 
     async function startCamera() {
+      cameraStage.style.aspectRatio = "";
       cameraStage.classList.toggle("landscape", captureFraming.value === "landscape");
       if (!navigator.mediaDevices?.getUserMedia) {
         setCameraPlaceholder("Camera access requires a supported browser and a secure HTTPS connection.");
@@ -928,6 +942,8 @@
         await video.play();
         if (startToken !== cameraStartToken || cameraStream !== activeCameraStream) return;
         cameraPlaceholder.style.display = "none";
+        fitCameraStageToActualVideo();
+        captureFraming.disabled = true;
         canvas.width = video.videoWidth || 720;
         canvas.height = video.videoHeight || 1280;
         stopButton.disabled = false;
@@ -938,7 +954,12 @@
         const actualSize = actualVideo?.width && actualVideo?.height
           ? ` ${actualVideo.width}×${actualVideo.height}.`
           : "";
-        status.textContent = "Camera is live" + actualSize + " Loading face tracking in the background...";
+        const actualOrientation = video.videoWidth > video.videoHeight ? "landscape" : "portrait";
+        const requestedOrientation = captureFraming.value;
+        const orientationNote = actualOrientation !== requestedOrientation
+          ? ` The device supplied ${actualOrientation} video, so the preview has been resized to match the real camera frame.`
+          : "";
+        status.textContent = "Camera is live" + actualSize + orientationNote + " Loading face tracking in the background...";
         if (microphoneUnavailable) {
           status.textContent += " Microphone unavailable; preview and tracking work, but calls need microphone access.";
         }
@@ -1361,9 +1382,9 @@
             );
             status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2
               ? "Neural face replacement is active in the live preview and call output."
-              : permission.checked && uploadedFace
-              ? "Face detected. Experimental alignment preview active."
-              : "Face detected. Tracking is working.";
+              : showSwap.checked && permission.checked && uploadedFace
+              ? "Experimental triangle-mesh preview is active. Jagged edges can occur; this is not the neural AI swap."
+              : "Face detected. Tracking is working."
           } else {
             faceCurrentlyDetected = false;
             // Keep the last filter state briefly so a one-frame detector miss
@@ -2013,6 +2034,9 @@
       startButton.disabled = false;
       stopButton.disabled = true;
       cameraFacing.disabled = false;
+      captureFraming.disabled = false;
+      cameraStage.style.aspectRatio = "";
+      cameraStage.classList.toggle("landscape", captureFraming.value === "landscape");
       status.textContent = "Camera is stopped.";
     }
 
@@ -2171,6 +2195,9 @@
       if (!showSwap.checked) {
         ctx.setTransform(1,0,0,1,0,0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        status.textContent = "Experimental mesh preview is off. The original camera or neural AI output is shown.";
+      } else if (!neuralSwapTrack) {
+        status.textContent = "Experimental triangle-mesh preview is on. Jagged edges are expected; start the Neural Face Swap Engine for actual AI replacement.";
       }
     });
     clearFaceButton.addEventListener("click", clearUploadedFace);
