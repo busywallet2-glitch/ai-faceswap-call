@@ -763,6 +763,8 @@
     let animationFrame = null;
     let lastVideoTime = -1;
     let lastFaceDetectionTime = 0;
+    let lastFaceDetectedAt = 0;
+    let faceCurrentlyDetected = false;
     let photoUrl = null;
     let imageLoadToken = 0;
     let speechRecognition = null;
@@ -1180,8 +1182,10 @@
           }
 
           if (results.faceLandmarks.length) {
+            faceCurrentlyDetected = true;
+            lastFaceDetectedAt = frameTime;
             smoothedFaceLandmarks = smoothFaceLandmarks(
-              results.faceLandmarks[0], smoothedFaceLandmarks, 0.58
+              results.faceLandmarks[0], smoothedFaceLandmarks
             );
             status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
               ? "Neural face replacement is active in the live preview and call output."
@@ -1189,7 +1193,10 @@
               ? "Face detected. Experimental alignment preview active."
               : "Face detected. Tracking is working.";
           } else {
-            smoothedFaceLandmarks = null;
+            faceCurrentlyDetected = false;
+            // Keep the last filter state briefly so a one-frame detector miss
+            // does not cause a visible snap when the face is reacquired.
+            if (frameTime - lastFaceDetectedAt > 250) smoothedFaceLandmarks = null;
             status.textContent = "Looking for a face...";
           }
         } catch (faceDetectionError) {
@@ -1201,7 +1208,7 @@
         }
       }
 
-      if (smoothedFaceLandmarks &&
+      if (faceCurrentlyDetected && smoothedFaceLandmarks &&
           !(neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2)) {
         warpFace(smoothedFaceLandmarks);
       }
@@ -1755,6 +1762,8 @@
       lastPoseLandmarks = null;
       lastPoseDetectionTime = 0;
       smoothedFaceLandmarks = null;
+      lastFaceDetectedAt = 0;
+      faceCurrentlyDetected = false;
       bodyFrameStatus.textContent = "Enable body tracking to check whether your full body is in frame.";
       if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
       cameraStream = null;
