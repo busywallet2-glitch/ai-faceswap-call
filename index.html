@@ -1691,8 +1691,8 @@
           segmenter:{url:"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite",sha256:KNOWN_SHA256.segmenter}
         };
         pendingSwap = await createFaceSwap({models:models,backend:"auto",
-          onProgress:({model,loaded,total})=>{aiProgress.max=total||1;aiProgress.value=loaded;aiEngineStatus.textContent="Downloading/verifying "+model+" · "+Math.round(loaded/1000000)+" MB";},
-          onStats:({fps,inferMs,backend,latencyMs})=>{aiEngineStats.textContent=backend.toUpperCase()+" · "+Math.round(fps)+" output fps · "+Math.round(inferMs)+" ms inference · "+latencyMs+" ms latency";},
+          onProgress:({model,loaded,total})=>{if(!isCurrentSession())return;aiProgress.max=total||1;aiProgress.value=loaded;aiEngineStatus.textContent="Downloading/verifying "+model+" · "+Math.round(loaded/1000000)+" MB";},
+          onStats:({fps,inferMs,backend,latencyMs})=>{if(!isCurrentSession())return;aiEngineStats.textContent=backend.toUpperCase()+" · "+Math.round(fps)+" output fps · "+Math.round(inferMs)+" ms inference · "+latencyMs+" ms latency";},
           onLog:(message)=>console.info("[neural-face-swap]",message)
         });
         ensureCurrentSession();
