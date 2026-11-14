@@ -90,6 +90,11 @@ const required = [
   "0.30 + averageMovement * 14",
 
   "smoothedFaceLandmarks = smoothFaceLandmarks(",
+  "let lastFaceDetectedAt = 0",
+  "let faceCurrentlyDetected = false",
+  "if (frameTime - lastFaceDetectedAt > 250) smoothedFaceLandmarks = null",
+  "if (faceCurrentlyDetected && smoothedFaceLandmarks &&",
+  "faceCurrentlyDetected = false",
   "warpFace(smoothedFaceLandmarks)",
   "poseLandmarker.detectForVideo(video, frameTime)",
   "Keep your full body inside this outline",
