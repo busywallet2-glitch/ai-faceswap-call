@@ -87,8 +87,15 @@ assert.ok(
   /track\.addEventListener\("ended", \(\) => \{[\s\S]*?processedStream\?\.removeTrack\(audioTrack\)[\s\S]*?audioSender\.replaceTrack\(null\)/.test(html),
   "A disconnected microphone must be removed from the processed call stream and detached from the active sender."
 );
+const cameraReadyStatusIndex = html.lastIndexOf(
+  'status.textContent = "Camera and face tracking are ready. Looking for a face...";'
+);
+const microphoneReadyGuardIndex = html.indexOf(
+  "if (!getLiveMicrophoneTrack(cameraStream))",
+  cameraReadyStatusIndex
+);
 assert.ok(
-  /Camera and face tracking are ready\. Looking for a face\.\.\.\s*;\s*if \(!getLiveMicrophoneTrack\(cameraStream\)\)/.test(html),
+  cameraReadyStatusIndex >= 0 && microphoneReadyGuardIndex > cameraReadyStatusIndex,
   "The ready status must retain a pending/unavailable microphone warning instead of hiding it."
 );
 assert.ok(
