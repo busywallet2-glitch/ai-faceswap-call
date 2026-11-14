@@ -303,6 +303,7 @@
       border-radius:14px; border:1px solid var(--line); background:#03050a;
     }
     .framing-guide-label { background:rgba(7,12,23,.9); }
+    #bodyFrameStatus { min-height: 34px; }
     .hint + button { margin-top:8px; }
     .camera-controls > .hint { margin:10px 0; }
     .camera-controls > button { width:100%; margin:5px 0; }
@@ -543,7 +544,7 @@
       <input type="checkbox" id="showBodyPose">
       Show full-body pose tracking overlay
     </label>
-    <p class="hint">The body overlay tracks shoulders, arms, hips, and legs when they are visible in the frame. It is a tracking aid, not whole-body face replacement.</p>
+    <p class="hint">The body overlay now combines smoothed pose landmarks with an optional person-segmentation mask when the browser model provides one. It helps inspect full-body framing and silhouette boundaries; it does not replace clothing or body identity.</p>
     <p id="bodyFrameStatus" class="hint" role="status">Enable body tracking to check whether your full body is in frame.</p>
     <p id="status">Camera is stopped.</p>
     <p class="hint">Use only a face image you own or have explicit permission to use, and disclose altered video to call participants. Use a clear, front-facing photo with one visible face. For full-body framing, place your phone farther away and keep your head clearly visible. The selected image is processed locally in this browser session.</p>
@@ -685,6 +686,9 @@
     neuralOutputVideo.muted = true;
     const canvas = document.getElementById("overlay");
     const ctx = canvas.getContext("2d");
+    const bodyMaskCanvas = document.createElement("canvas");
+    const bodyMaskContext = bodyMaskCanvas.getContext("2d", { willReadFrequently: true });
+    let bodyMaskAvailable = false;
     const startButton = document.getElementById("startButton");
     const stopButton = document.getElementById("stopButton");
     const faceFile = document.getElementById("faceFile");
@@ -825,7 +829,8 @@
               delegate: "CPU"
             },
             runningMode: "VIDEO",
-            numPoses: 1
+            numPoses: 1,
+            outputSegmentationMasks: true
           }), 60000, "The body-tracking model took too long to load.");
         } catch (poseError) {
           console.warn("Full-body pose tracking is unavailable; face tracking can still run.", poseError);
@@ -1105,6 +1110,55 @@
       });
     }
 
+    function updateBodySegmentationMask(mask) {
+      if (!mask || !bodyMaskContext || typeof mask.getAsFloat32Array !== "function") {
+        bodyMaskAvailable = false;
+        return;
+      }
+      const width = Number(mask.width);
+      const height = Number(mask.height);
+      if (!Number.isInteger(width) || !Number.isInteger(height) ||
+          width < 1 || height < 1 || width * height > 4_000_000) {
+        bodyMaskAvailable = false;
+        return;
+      }
+      const values = mask.getAsFloat32Array();
+      if (!values || values.length !== width * height) {
+        bodyMaskAvailable = false;
+        return;
+      }
+      bodyMaskCanvas.width = width;
+      bodyMaskCanvas.height = height;
+      const pixels = bodyMaskContext.createImageData(width, height);
+      for (let index = 0; index < values.length; index++) {
+        const confidence = values[index];
+        if (!Number.isFinite(confidence) || confidence < 0.42) continue;
+        const offset = index * 4;
+        pixels.data[offset] = 45;
+        pixels.data[offset + 1] = 212;
+        pixels.data[offset + 2] = 191;
+        pixels.data[offset + 3] = Math.round(Math.min(0.34, confidence * 0.34) * 255);
+      }
+      bodyMaskContext.putImageData(pixels, 0, 0);
+      bodyMaskAvailable = true;
+    }
+
+    function drawBodySegmentationMask() {
+      if (!bodyMaskAvailable || !bodyMaskCanvas.width || !bodyMaskCanvas.height) return;
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(bodyMaskCanvas, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
+    function clearBodySegmentationMask() {
+      bodyMaskAvailable = false;
+      if (bodyMaskContext && bodyMaskCanvas.width && bodyMaskCanvas.height) {
+        bodyMaskContext.clearRect(0, 0, bodyMaskCanvas.width, bodyMaskCanvas.height);
+      }
+    }
+
     function drawBodyPose(landmarks) {
       const connections = [
         [11,12],[11,13],[13,15],[12,14],[14,16],
@@ -1203,6 +1257,15 @@
             try {
               const poseResults = poseLandmarker.detectForVideo(video, frameTime);
               const detectedPose = poseResults.landmarks?.[0] || null;
+              const segmentationMask = poseResults.segmentationMasks?.[0] || null;
+              try {
+                if (detectedPose && segmentationMask) updateBodySegmentationMask(segmentationMask);
+                else if (!detectedPose) clearBodySegmentationMask();
+              } finally {
+                if (segmentationMask && typeof segmentationMask.close === "function") {
+                  segmentationMask.close();
+                }
+              }
               if (detectedPose) {
                 lastPoseDetectedAt = frameTime;
                 smoothedPoseLandmarks = smoothPoseLandmarks(detectedPose, smoothedPoseLandmarks);
@@ -1210,6 +1273,7 @@
               } else if (frameTime - lastPoseDetectedAt > 300) {
                 smoothedPoseLandmarks = null;
                 lastPoseLandmarks = null;
+                clearBodySegmentationMask();
               }
               updateBodyFrameStatus(lastPoseLandmarks);
             } catch (poseError) {
@@ -1254,7 +1318,12 @@
           !(neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2)) {
         warpFace(smoothedFaceLandmarks);
       }
-      if (showBodyPose.checked && lastPoseLandmarks) drawBodyPose(lastPoseLandmarks);
+      if (showBodyPose.checked && lastPoseLandmarks) {
+        drawBodySegmentationMask();
+        drawBodyPose(lastPoseLandmarks);
+      } else if (!showBodyPose.checked && bodyMaskAvailable) {
+        clearBodySegmentationMask();
+      }
       animationFrame = requestAnimationFrame(detectFace);
     }
 
@@ -1805,6 +1874,7 @@
       lastPoseDetectionTime = 0;
       lastPoseDetectedAt = 0;
       smoothedPoseLandmarks = null;
+      clearBodySegmentationMask();
       smoothedFaceLandmarks = null;
       lastFaceDetectedAt = 0;
       faceCurrentlyDetected = false;
@@ -2009,7 +2079,7 @@
     showBodyPose.addEventListener("change", () => {
       if (showBodyPose.checked) {
         bodyFrameStatus.textContent = poseLandmarker
-          ? "Checking full-body framing..."
+          ? "Checking full-body framing and person silhouette..."
           : "Body tracking is unavailable on this load. Face tracking can still be used.";
       } else {
         bodyFrameStatus.textContent = "Body tracking is off.";
