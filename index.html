@@ -933,7 +933,42 @@
               microphoneStream.getTracks().forEach(track => track.stop());
               return;
             }
-            microphoneStream.getAudioTracks().forEach(track => activeCameraStream.addTrack(track));
+            microphoneStream.getAudioTracks().forEach(track => {
+              activeCameraStream.addTrack(track);
+              track.addEventListener("ended", () => {
+                if (cameraStream !== activeCameraStream) return;
+                const processedAudioTracks = processedStream?.getAudioTracks() || [];
+                processedAudioTracks.forEach(audioTrack => {
+                  processedStream?.removeTrack(audioTrack);
+                  audioTrack.stop();
+                });
+                stopVoiceProcessing();
+                const audioSender = activeCall?.peerConnection?.getSenders()
+                  .find(sender => sender.track?.kind === "audio");
+                if (audioSender) {
+                  audioSender.replaceTrack(null).catch(error =>
+                    console.warn("Could not detach the ended microphone track.", error)
+                  );
+                }
+                status.textContent = "Microphone disconnected. Camera preview and face tracking can continue, but call audio has stopped.";
+                callStatus.textContent = activeCall
+                  ? "Microphone disconnected. Your video call remains connected without your audio. Restart the camera to restore microphone access."
+                  : "Microphone disconnected. Restart the camera and allow microphone access before calling.";
+              }, { once: true });
+              track.addEventListener("mute", () => {
+                if (cameraStream === activeCameraStream && activeCall) {
+                  callStatus.textContent = "Microphone temporarily unavailable. Check the microphone or browser permission.";
+                }
+              });
+              track.addEventListener("unmute", () => {
+                if (cameraStream === activeCameraStream && activeCall) {
+                  callStatus.textContent = "Microphone audio has resumed.";
+                }
+              });
+            });
+            if (status.textContent.includes("Microphone access is still pending or unavailable")) {
+              status.textContent = "Camera and face tracking are ready. Looking for a face...";
+            }
           } catch (microphoneError) {
             // A stale permission result must not replace the camera-disconnected status.
             if (cameraStream !== activeCameraStream) return;
@@ -952,6 +987,9 @@
           animationFrame = null;
           lastVideoTime = -1;
           status.textContent = "Camera and face tracking are ready. Looking for a face...";
+          if (!getLiveMicrophoneTrack(cameraStream)) {
+            status.textContent += " Microphone access is still pending or unavailable; calls require microphone access.";
+          }
           detectFace();
         } catch (trackingError) {
           console.error("Face tracking could not be loaded.", trackingError);
@@ -964,7 +1002,7 @@
         const message = error?.name === "NotAllowedError"
           ? "Camera permission was denied. Allow camera access in your browser settings and try again."
           : error?.name === "NotFoundError"
-          ? "No camera or microphone was found on this device."
+          ? "No camera was found on this device."
           : error?.name === "NotReadableError"
           ? "The camera is busy in another app. Close that app and try again."
           : error?.message || "Check your camera permission and try again.";
@@ -1714,12 +1752,26 @@
       }
     }
 
+    function getLiveMicrophoneTrack(stream) {
+      return stream?.getAudioTracks().find(track => track.readyState === "live") || null;
+    }
+
     async function ensureProcessedStream() {
       if (!cameraStream) {
         callStatus.textContent = "Start your camera and microphone before calling.";
         return null;
       }
-      if (!processedStream || processedStream.getTracks().every(track => track.readyState !== "live")) await startProcessedOutput();
+      if (!getLiveMicrophoneTrack(cameraStream)) {
+        callStatus.textContent = "Microphone access is pending or unavailable. Allow microphone access before starting or answering a call.";
+        return null;
+      }
+      if (!processedStream || processedStream.getTracks().every(track => track.readyState !== "live")) {
+        await startProcessedOutput();
+      }
+      if (!getLiveMicrophoneTrack(cameraStream)) {
+        callStatus.textContent = "Microphone disconnected while preparing the call. Restart the camera and allow microphone access.";
+        return null;
+      }
       return processedStream;
     }
 
