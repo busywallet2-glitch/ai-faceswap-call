@@ -6,6 +6,23 @@ import assert from "node:assert/strict";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
+assert.match(html, /let cameraStartToken = 0;/,
+  "Camera startup must have a session token so late permission results can be discarded.");
+const cameraStartupStart = html.indexOf("async function startCamera() {");
+const cameraStartupEnd = html.indexOf("function getPixelPoints(", cameraStartupStart);
+assert.ok(cameraStartupStart >= 0 && cameraStartupEnd > cameraStartupStart,
+  "Camera startup must remain independently inspectable.");
+const cameraStartupSource = html.slice(cameraStartupStart, cameraStartupEnd);
+assert.match(cameraStartupSource, /const startToken = \\+\\+cameraStartToken;/,
+  "Every camera startup must receive a unique session token.");
+assert.match(cameraStartupSource, /if \\(startToken !== cameraStartToken\\) \\{[\\s\\S]*?acquiredCameraStream\\.getTracks\\(\\)\\.forEach\\(track => track\\.stop\\(\\)\\);[\\s\\S]*?return;/,
+  "A camera stream granted after its session was cancelled must have every track stopped.");
+assert.match(cameraStartupSource, /startToken !== cameraStartToken \\|\\| cameraStream !== activeCameraStream/,
+  "A stale camera startup must not continue after camera playback or tracker loading.");
+const stopCameraStart = html.indexOf("function stopCamera() {");
+assert.ok(stopCameraStart >= 0 && /cameraStartToken \\+= 1;/.test(html.slice(stopCameraStart, stopCameraStart + 180)),
+  "Stopping the camera must invalidate any pending permission request.");
+
 const moduleScript = html.match(/<script type="module">([\s\S]*?)<\/script>/);
 assert.ok(moduleScript, "The app must include its browser module script.");
 const syntaxPath = join(tmpdir(), `busywallet-app-syntax-${process.pid}.mjs`);
