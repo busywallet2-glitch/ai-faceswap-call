@@ -2,7 +2,6 @@ name: Face Tracking Studio checks
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
