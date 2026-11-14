@@ -124,9 +124,13 @@ assert.ok(
     previewFitSource.includes('cameraStage.classList.toggle("landscape", width > height);'),
   "The preview must match the dimensions and orientation actually supplied by the camera."
 );
+const cameraStartupForFit = html.slice(
+  html.indexOf("async function startCamera()"),
+  html.indexOf("function getPixelPoints(")
+);
 assert.ok(
-  cameraStartupSource.includes("fitCameraStageToActualVideo();") &&
-    cameraStartupSource.includes("captureFraming.disabled = true;"),
+  cameraStartupForFit.includes("fitCameraStageToActualVideo();") &&
+    cameraStartupForFit.includes("captureFraming.disabled = true;"),
   "The live preview must fit the actual stream and lock orientation controls until the camera stops."
 );
 assert.ok(
