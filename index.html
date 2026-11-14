@@ -1203,6 +1203,7 @@
           // A transient model/runtime error must not kill the animation loop or
           // freeze the outgoing video canvas. Keep the camera preview running.
           console.warn("Face detection skipped a frame after a processing error.", faceDetectionError);
+          faceCurrentlyDetected = false;
           smoothedFaceLandmarks = null;
           status.textContent = "Camera is live, but face tracking hit a temporary error. Retrying...";
         }
