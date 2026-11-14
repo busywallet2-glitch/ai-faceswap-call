@@ -22,6 +22,18 @@ const stopCameraStart = html.indexOf("function stopCamera() {");
 assert.ok(stopCameraStart >= 0 && /cameraStartToken \+= 1;/.test(html.slice(stopCameraStart, stopCameraStart + 180)),
   "Stopping the camera must invalidate any pending permission request.");
 
+assert.match(html, /let trackerLoadPromise = null;/,
+  "Overlapping camera starts must share one tracker model load.");
+const trackerLoaderStart = html.indexOf("async function loadTrackers() {");
+const trackerLoaderEnd = html.indexOf("function getProcessedCanvasSource()", trackerLoaderStart);
+assert.ok(trackerLoaderStart >= 0 && trackerLoaderEnd > trackerLoaderStart,
+  "The tracker loader must remain independently inspectable.");
+const trackerLoaderSource = html.slice(trackerLoaderStart, trackerLoaderEnd);
+assert.ok(trackerLoaderSource.includes("if (!trackerLoadPromise)"),
+  "Tracker libraries and models must load only once while a load is in progress.");
+assert.ok(trackerLoaderSource.includes("if (trackerLoadPromise === pendingLoad) trackerLoadPromise = null;"),
+  "A failed tracker load must clear its own promise so the next camera start can retry.");
+
 const moduleScript = html.match(/<script type="module">([\s\S]*?)<\/script>/);
 assert.ok(moduleScript, "The app must include its browser module script.");
 const syntaxPath = join(tmpdir(), `busywallet-app-syntax-${process.pid}.mjs`);
