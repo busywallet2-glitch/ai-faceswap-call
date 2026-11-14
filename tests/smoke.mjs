@@ -18,6 +18,91 @@ assert.equal(
   `The browser module must parse as valid JavaScript.\\n${syntaxCheck.stderr || syntaxCheck.stdout}`
 );
 
+const poseSmoothingStart = html.indexOf("function smoothPoseLandmarks(current, previous) {");
+const poseSmoothingEnd = html.indexOf("\n    function updateBodySegmentationMask", poseSmoothingStart);
+assert.ok(
+  poseSmoothingStart >= 0 && poseSmoothingEnd > poseSmoothingStart,
+  "The pose smoothing helper must remain independently testable."
+);
+const poseSmoothingSource = html.slice(poseSmoothingStart, poseSmoothingEnd);
+const poseSmoothingBody = poseSmoothingSource.slice(
+  poseSmoothingSource.indexOf("{") + 1,
+  poseSmoothingSource.lastIndexOf("}")
+);
+const smoothPoseLandmarks = new Function("current", "previous", poseSmoothingBody);
+const firstPose = [
+  { x: 0.2, y: 0.3, visibility: 0.9 },
+  { x: 0.7, y: 0.6, visibility: 0.9 }
+];
+const seededPose = smoothPoseLandmarks(firstPose, null);
+assert.notEqual(seededPose[0], firstPose[0], "Initial landmarks must be copied, not mutated.");
+const movedPose = [
+  { x: 0.8, y: 0.7, visibility: 0.9 },
+  { x: 0.6, y: 0.5, visibility: 0.9 }
+];
+const filteredPose = smoothPoseLandmarks(movedPose, seededPose);
+assert.ok(filteredPose[0].x > seededPose[0].x && filteredPose[0].x < movedPose[0].x,
+  "Reliable joint movement must be smoothed instead of jumping directly.");
+const weakPose = [
+  { x: 0.99, y: 0.99, visibility: 0.05 },
+  { x: 0.01, y: 0.01, visibility: 0.05 }
+];
+const heldPose = smoothPoseLandmarks(weakPose, filteredPose);
+assert.equal(heldPose[0].x, filteredPose[0].x,
+  "Low-confidence joint readings must not move a stable landmark.");
+
+
+
+const liveMicrophoneMatch = html.match(
+  /function getLiveMicrophoneTrack\(stream\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(liveMicrophoneMatch, "Call setup must expose a testable live-microphone check.");
+const getLiveMicrophoneTrack = new Function("stream", liveMicrophoneMatch[1]);
+const liveMicrophone = { readyState: "live" };
+assert.equal(
+  getLiveMicrophoneTrack({ getAudioTracks: () => [{ readyState: "ended" }, liveMicrophone] }),
+  liveMicrophone,
+  "Call setup must select a live microphone track and ignore ended tracks."
+);
+assert.equal(
+  getLiveMicrophoneTrack({ getAudioTracks: () => [{ readyState: "ended" }] }),
+  null,
+  "An ended microphone track must not qualify a call as audio-ready."
+);
+assert.equal(getLiveMicrophoneTrack(null), null, "A missing camera stream must not qualify as audio-ready.");
+
+const callSetupSource = html.slice(
+  html.indexOf("async function ensureProcessedStream()"),
+  html.indexOf("function closeActiveCall()")
+);
+assert.ok(
+  /if \(!getLiveMicrophoneTrack\(cameraStream\)\)[\s\S]*?return null;/.test(callSetupSource),
+  "Calls must be blocked while microphone permission is pending or the microphone track has ended."
+);
+assert.ok(
+  /Microphone access is pending or unavailable\. Allow microphone access before starting or answering a call\./.test(callSetupSource),
+  "The call flow must explain how to restore microphone access."
+);
+assert.ok(
+  /track\.addEventListener\("ended", \(\) => \{[\s\S]*?processedStream\?\.removeTrack\(audioTrack\)[\s\S]*?audioSender\.replaceTrack\(null\)/.test(html),
+  "A disconnected microphone must be removed from the processed call stream and detached from the active sender."
+);
+const cameraReadyStatusIndex = html.lastIndexOf(
+  'status.textContent = "Camera and face tracking are ready. Looking for a face...";'
+);
+const microphoneReadyGuardIndex = html.indexOf(
+  "if (!getLiveMicrophoneTrack(cameraStream))",
+  cameraReadyStatusIndex
+);
+assert.ok(
+  cameraReadyStatusIndex >= 0 && microphoneReadyGuardIndex > cameraReadyStatusIndex,
+  "The ready status must retain a pending/unavailable microphone warning instead of hiding it."
+);
+assert.ok(
+  /No camera was found on this device\./.test(html),
+  "Camera-only startup errors must not claim a microphone is missing."
+);
+
 const required = [
   'id="camera"',
   'id="cameraFacing"',
@@ -51,6 +136,9 @@ const required = [
   "The tracking libraries took too long to load",
   "The face model took too long to download",
   "detectForVideo",
+  "Face detection skipped a frame after a processing error.",
+  "Camera is live, but face tracking hit a temporary error. Retrying...",
+  "Keep the camera preview running.",
   "getUserMedia",
   "pagehide",
   'id="clearFaceButton"',
@@ -73,16 +161,45 @@ const required = [
   'id="framingGuideButton"',
   'id="showBodyPose"',
   "PoseLandmarker.createFromOptions",
+  "function updateBodySegmentationMask(mask)",
+  "function drawBodySegmentationMask()",
+  "function clearBodySegmentationMask()",
+  "The person-silhouette mask and joint tracking are active.",
+  "this browser did not return a silhouette mask.",
+  "smoothedPoseLandmarks = null;\n              clearBodySegmentationMask();",
+  "outputSegmentationMasks: true",
+  "poseResults.segmentationMasks?.[0]",
+  "else clearBodySegmentationMask();",
+  "mask.getAsFloat32Array()",
+  "segmentationMask.close()",
+  "pixels.data[offset + 3] = Math.round(Math.min(0.34, confidence * 0.34) * 255)",
   "function drawBodyPose(landmarks)",
+  "function smoothPoseLandmarks(current, previous)",
+  "const movement = Math.hypot(point.x - old.x, point.y - old.y)",
+  "const response = Math.min(0.84, Math.max(0.38, 0.38 + movement * 8))",
+  "let lastPoseDetectedAt = 0",
+  "smoothedPoseLandmarks = smoothPoseLandmarks(detectedPose, smoothedPoseLandmarks)",
+  "frameTime - lastPoseDetectedAt > 300",
+  "lastPoseDetectedAt = 0",
+  "smoothedPoseLandmarks = null",
   'id="bodyFrameStatus"',
   "function updateBodyFrameStatus(landmarks)",
   "const required = [0,11,12,23,24,27,28,31,32]",
   "const minimumConfidence = index >= 27 ? 0.25 : 0.4",
   'bodyFrameStatus.textContent = "Enable body tracking to check whether your full body is in frame."',
-  "Full-body landmarks detected.",
+  "Full body detected.",
   "Move farther back and show your head, shoulders, hips, and both feet.",
-  "function smoothFaceLandmarks(current, previous, response = 0.72)",
+  "function smoothFaceLandmarks(current, previous)",
+  "const averageMovement = measuredPoints ? totalMovement / measuredPoints : 0",
+  "const adaptiveResponse = Math.min(0.88, Math.max(0.30,",
+  "0.30 + averageMovement * 14",
+
   "smoothedFaceLandmarks = smoothFaceLandmarks(",
+  "let lastFaceDetectedAt = 0",
+  "let faceCurrentlyDetected = false",
+  "if (frameTime - lastFaceDetectedAt > 250) smoothedFaceLandmarks = null",
+  "if (faceCurrentlyDetected && smoothedFaceLandmarks &&",
+  "faceCurrentlyDetected = false",
   "warpFace(smoothedFaceLandmarks)",
   "poseLandmarker.detectForVideo(video, frameTime)",
   "Keep your full body inside this outline",
@@ -120,6 +237,7 @@ const required = [
   "neuralOutputVideo.readyState < 2",
   "Processed video frame received.",
   "The neural engine started but produced no visible video frame within 15 seconds.",
+  "await withTimeout(neuralOutputVideo.play(), 15000",
   "neuralSwap.process(cameraStream.getVideoTracks()[0]",
   "sender.replaceTrack(track)",
   "aiConsent.checked = false",
@@ -148,7 +266,6 @@ const required = [
   "lastFaceDetectionTime = 0",
   "performance.now() - lastFaceDetectionTime >= 33",
   "Refresh the outgoing canvas independently of CPU landmark inference.",
-  "smoothedFaceLandmarks, 0.58",
   "warpFace(smoothedFaceLandmarks)",
   "function getProcessedCanvasSource()",
   "neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack])",
@@ -174,8 +291,50 @@ assert.ok(
   "The stop-camera flow must stop media tracks."
 );
 assert.ok(
-  /audio:\s*\{\s*echoCancellation:\s*true/.test(html),
-  "The camera capture must request the microphone with echo cancellation for calling."
+  /getUserMedia\(\{\s*video:/.test(html),
+  "The camera preview must request video independently of microphone availability."
+);
+assert.ok(
+  /getUserMedia\(\{\s*audio:\s*\{\s*echoCancellation:\s*true/.test(html),
+  "The app must request microphone audio separately with echo cancellation for calling."
+);
+assert.ok(
+  /microphoneUnavailable/.test(html) &&
+  /Microphone unavailable; preview and tracking work, but calls need microphone access\./.test(html),
+  "The app must explain when camera preview works but microphone access is unavailable."
+);
+
+const cameraStartupSource = html.slice(
+  html.indexOf("async function startCamera()"),
+  html.indexOf("function stopCamera()")
+);
+assert.ok(
+  cameraStartupSource.indexOf("renderCameraOnly();") <
+    cameraStartupSource.indexOf("audio: { echoCancellation: true"),
+  "The camera preview must become live before the app requests microphone permission."
+);
+assert.ok(
+  /if \(cameraStream !== activeCameraStream\) \{\s*microphoneStream\.getTracks\(\)\.forEach\(track => track\.stop\(\)\);\s*return;\s*\}/.test(html),
+  "A microphone granted after camera disconnect must be stopped immediately."
+);
+assert.ok(
+  /if \(cameraStream !== activeCameraStream\) return;\s*microphoneUnavailable = true/.test(html),
+  "A stale microphone permission result must not overwrite the camera-disconnected status."
+);
+assert.ok(
+  /microphoneStream\.getAudioTracks\(\)\.forEach\(track => \{\s*activeCameraStream\.addTrack\(track\);/.test(html),
+  "Microphone tracks must be attached only to the camera session that requested them."
+);
+assert.ok(
+  /track\.addEventListener\("ended"/.test(html) &&
+  /cameraStream !== activeCameraStream/.test(html) &&
+  /Camera disconnected\. Your preview and call have stopped; reconnect the camera to continue\./.test(html),
+  "An externally ended camera track must stop the active session and explain how to recover."
+);
+assert.ok(
+  /Requesting camera permission\.\.\./.test(html) &&
+  /Camera permission was denied\. Allow camera access in your browser settings and try again\./.test(html),
+  "Camera permission messaging must not imply microphone permission is required to start preview."
 );
 
 assert.ok(
