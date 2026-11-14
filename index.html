@@ -1296,7 +1296,7 @@
             smoothedFaceLandmarks = smoothFaceLandmarks(
               results.faceLandmarks[0], smoothedFaceLandmarks
             );
-            status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live"
+            status.textContent = neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2
               ? "Neural face replacement is active in the live preview and call output."
               : permission.checked && uploadedFace
               ? "Face detected. Experimental alignment preview active."
@@ -1525,6 +1525,39 @@
       speechSynthesis.speak(utterance);
     }
 
+    function waitForNeuralVideoFrame(timeoutMs = 15000) {
+      return new Promise((resolve, reject) => {
+        const track = neuralSwapTrack;
+        const cleanup = () => {
+          clearTimeout(timeout);
+          neuralOutputVideo.removeEventListener("loadeddata", check);
+          neuralOutputVideo.removeEventListener("playing", check);
+          track?.removeEventListener("ended", onEnded);
+        };
+        const check = () => {
+          if (track?.readyState !== "live") {
+            cleanup();
+            reject(new Error("The neural video track ended before its first frame."));
+          } else if (neuralOutputVideo.readyState >= 2 && neuralOutputVideo.videoWidth > 0) {
+            cleanup();
+            resolve();
+          }
+        };
+        const onEnded = () => {
+          cleanup();
+          reject(new Error("The neural video track ended before its first frame."));
+        };
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error("The neural engine started but produced no visible video frame within 15 seconds. This device/browser may not have enough GPU support."));
+        }, timeoutMs);
+        neuralOutputVideo.addEventListener("loadeddata", check);
+        neuralOutputVideo.addEventListener("playing", check);
+        track?.addEventListener("ended", onEnded, {once:true});
+        check();
+      });
+    }
+
     async function startNeuralFaceEngine() {
       if (neuralSwapStarting) return;
       if (!cameraStream || !cameraStream.getVideoTracks().length) { aiEngineStatus.textContent = "Start the camera before loading the neural engine."; return; }
@@ -1569,18 +1602,28 @@
         aiEngineStats.textContent = qualityNotes.length ? "Portrait quality warning: " + qualityNotes.join(", ") + ". Use sharp, evenly lit photos with the face clearly visible." : "Portrait quality check passed.";
         if (faceAngleImages.length) aiEngineStats.textContent += " · " + faceAngleImages.length + " extra angle view(s) loaded.";
         neuralSwapTrack = neuralSwap.process(cameraStream.getVideoTracks()[0],{maxFps:24});
+        if (!neuralSwapTrack || neuralSwapTrack.kind !== "video" || neuralSwapTrack.readyState !== "live") {
+          throw new Error("The neural engine did not return a live video track.");
+        }
         neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack]);
-        neuralOutputVideo.play().catch(error => {
-          console.warn("Neural output preview could not start yet; the camera feed will remain available.", error);
-        });
+        await withTimeout(neuralOutputVideo.play(), 15000, "The browser did not start playback for the neural output track.");
+        await waitForNeuralVideoFrame();
+        if (neuralSwapTrack.readyState !== "live" || neuralOutputVideo.readyState < 2 || !neuralOutputVideo.videoWidth) {
+          throw new Error("The neural output track opened but did not produce a decoded video frame. The original camera is still available.");
+        }
         neuralSwapTrack.addEventListener("ended", () => {
           neuralOutputVideo.pause();
           neuralOutputVideo.srcObject = null;
           aiEngineStatus.textContent = "Neural output stopped. The live camera/call feed has fallen back to the original camera.";
+          aiEngineStats.textContent = "Neural video track ended; original camera is being used.";
         }, {once:true});
+        neuralSwapTrack.addEventListener("mute", () => {
+          aiEngineStatus.textContent = "Neural output paused by the browser or GPU. The call remains connected; check device performance.";
+        });
         aiEngineStatus.textContent = activeCall
-          ? "Neural replacement is ready. The existing call will switch through its stable processed video track without reconnecting."
-          : "Neural face replacement is active. Enable Processed Camera Output or start a call to share it.";
+          ? "Neural video frames confirmed. The existing call can now use the processed camera track."
+          : "Neural video frames confirmed. Enable Processed Camera Output or start a call to share it.";
+        aiEngineStats.textContent += " · Processed video frame received.";
         stopAIButton.disabled = false; outputButton.disabled = false;
       } catch(error) {
         console.error("Neural face engine could not start.",error);
