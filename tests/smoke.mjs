@@ -86,7 +86,7 @@ const required = [
   "Move farther back and show your head, shoulders, hips, and both feet.",
   "function smoothFaceLandmarks(current, previous)",
   "const averageMovement = measuredPoints ? totalMovement / measuredPoints : 0",
-  "const adaptiveResponse = Math.min(0.88, Math.max(0.28,",
+  "const adaptiveResponse = Math.min(0.88, Math.max(0.30,",
   "0.30 + averageMovement * 14",
 
   "smoothedFaceLandmarks = smoothFaceLandmarks(",
