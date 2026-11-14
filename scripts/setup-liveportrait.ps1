@@ -7,6 +7,7 @@ function Require-Command([string]$Name, [string]$InstallHint) {
 }
 
 Require-Command "git" "Install Git for Windows, then reopen PowerShell."
+Require-Command "git-lfs" "Install Git LFS, then reopen PowerShell."
 Require-Command "conda" "Install Miniconda or Anaconda, then reopen the Anaconda PowerShell prompt."
 Require-Command "ffmpeg" "Install FFmpeg and add its bin folder to PATH."
 Require-Command "ffprobe" "Install FFmpeg (including ffprobe) and add its bin folder to PATH."
@@ -25,6 +26,7 @@ if (-not (Test-Path (Join-Path $LivePortraitDir ".git"))) {
     }
     Write-Host "Cloning the official KwaiVGI LivePortrait repository..."
     git clone https://github.com/KwaiVGI/LivePortrait.git $LivePortraitDir
+    if ($LASTEXITCODE -ne 0) { throw "The LivePortrait source clone failed." }
 } else {
     Write-Host "LivePortrait source checkout already exists."
 }
@@ -33,23 +35,28 @@ $EnvironmentExists = conda env list | Select-String "^\s*$EnvironmentName\s"
 if (-not $EnvironmentExists) {
     Write-Host "Creating the upstream-recommended Python 3.9 environment..."
     conda create -n $EnvironmentName python=3.9 -y
+    if ($LASTEXITCODE -ne 0) { throw "Conda could not create the LivePortrait environment." }
 } else {
     Write-Host "Conda environment '$EnvironmentName' already exists."
 }
 
 Write-Host "Installing LivePortrait dependencies. This may take several minutes..."
 conda run -n $EnvironmentName python -m pip install -r (Join-Path $LivePortraitDir "requirements.txt")
+if ($LASTEXITCODE -ne 0) { throw "LivePortrait dependency installation failed." }
 
 if (-not (Test-Path $WeightsDir)) {
     Write-Host "Preparing Git LFS and downloading official pretrained weights from Hugging Face..."
     git lfs install
+    if ($LASTEXITCODE -ne 0) { throw "Git LFS initialization failed." }
     git clone https://huggingface.co/KwaiVGI/LivePortrait $WeightsDir
+    if ($LASTEXITCODE -ne 0) { throw "The pretrained model download failed. Check Git LFS and network access." }
 } else {
     Write-Host "A pretrained_weights folder already exists; leaving it untouched."
 }
 
 Write-Host "Checking the Python and PyTorch installation..."
 conda run -n $EnvironmentName python -c "import sys, torch; print('Python:', sys.version.split()[0]); print('PyTorch:', torch.__version__); print('CUDA available:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU mode')"
+if ($LASTEXITCODE -ne 0) { throw "The PyTorch verification command failed." }
 
 $RequiredWeights = @(
     "liveportrait\base_models\appearance_feature_extractor.pth",
