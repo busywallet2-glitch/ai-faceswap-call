@@ -115,3 +115,10 @@ Desktop integration is the practical next platform step. See [DESKTOP_INTEGRATIO
 ## Project status
 
 **Prototype stage — premium interface plus an experimental GPU neural face-swap integration. The source code is committed, but successful live inference has not yet been verified on the user's device. Browser calling and text translation remain experimental. Not ready for production or WhatsApp/Signal camera integration.**
+
+
+## Local LivePortrait experiment
+
+A Windows setup script and integration notes are available in [LIVEPORTRAIT_SETUP.md](LIVEPORTRAIT_SETUP.md). Run [scripts/setup-liveportrait.ps1](scripts/setup-liveportrait.ps1) on your own Windows computer after installing Git LFS, Conda, and FFmpeg. It clones the official LivePortrait source and model repository locally.
+
+**Important:** LivePortrait is a portrait-animation workflow driven by a video, not a ready-made real-time webcam face-swap server. This setup is an offline model evaluation step; it is not connected to the browser camera or WebRTC call path. The live-call engine remains a separate integration task.
