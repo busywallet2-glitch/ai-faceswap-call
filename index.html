@@ -234,6 +234,8 @@
       display:block; width:100%; margin:13px 0; color:#d9deeb;
       font-size:12px; font-weight:650; text-align:left;
     }
+    .legacy-overlay-control { opacity:.48; cursor:not-allowed; }
+    .legacy-overlay-control input { cursor:not-allowed; }
     label .voice-select { display:block; margin:7px 0 0; }
     .voice-select,.call-field {
       width:100%; min-height:46px; padding:11px 13px;
@@ -407,14 +409,14 @@
 
   <section class="modules-grid" aria-label="Studio tools">
   <div class="panel ai-engine-panel">
-    <div class="ai-engine-head"><div><span class="eyebrow">REAL AI PIPELINE</span><h2>Neural Face Swap Engine</h2></div><span class="preview-tag">EXPERIMENTAL GPU</span></div>
-    <p class="hint">This uses a trained identity-transfer model with face alignment and skin/occlusion blending. It replaces the old triangle-warp preview in the call output. First use downloads large model files; performance depends heavily on your device GPU.</p>
+    <div class="ai-engine-head"><div><span class="eyebrow">REAL AI PIPELINE</span><h2>Live AI Face Replacement</h2></div><span class="preview-tag">EXPERIMENTAL GPU</span></div>
+    <p class="hint">This trained identity-transfer model is the only face-replacement path. It aligns the authorized source identity to the live face and blends around facial edges and occlusions. The old triangle warp is disabled. The engine must produce a decoded live frame before the app reports that swapping is active; otherwise it keeps the original camera and reports the reason.</p>
     <label><input id="aiConsent" type="checkbox"> I confirm I have permission to use the uploaded face and will disclose altered video to call participants.</label>
-    <button id="startAIButton" type="button" disabled>Load Neural Face Engine</button>
-    <button id="stopAIButton" type="button" disabled>Stop Neural Engine</button>
+    <button id="startAIButton" type="button" disabled>Start Live AI Face Swap</button>
+    <button id="stopAIButton" type="button" disabled>Stop Live AI Swap</button>
     <progress id="aiProgress" max="1" value="0" hidden></progress>
-    <p id="aiEngineStatus" class="hint" role="status">Upload a clear face photo, start the camera, and confirm permission to enable the neural engine.</p>
-    <p id="aiEngineStats" class="hint" aria-live="polite">GPU capability will be checked when you start the engine.</p>
+    <p id="aiEngineStatus" class="hint" role="status">Start the camera, upload one clear authorized face photo, and confirm permission to start the live AI swap.</p>
+    <p id="aiEngineStats" class="hint" aria-live="polite">GPU support and real inference speed will be checked when you start the engine.</p>
     <p class="hint">Model code and weights have separate licence terms. This integration is for personal, non-commercial use unless you obtain the required commercial permissions. On phones without WebGPU, live neural swapping may be unavailable or too slow.</p>
   </div>
   <div class="panel">
@@ -536,16 +538,16 @@
       <input type="checkbox" id="permission">
       I have permission to use this person's face.
     </label>
-    <label>
-      <input type="checkbox" id="showSwap">
-      Experimental triangle-mesh preview (can distort face edges; not the AI swap)
+    <label class="legacy-overlay-control">
+      <input type="checkbox" id="showSwap" disabled>
+      Legacy triangle-mesh preview — disabled because it distorts the face
     </label>
-    <p class="hint">The mesh preview is only a rough geometry test and can produce jagged edges. For actual identity transfer, load the Neural Face Swap Engine below.</p>
+    <p class="hint">The old mesh effect is not a real face swap and is disabled. Use the Live AI Face Replacement engine below; it is the only identity-replacement path.</p>
     <label>
       <input type="checkbox" id="showBodyPose">
-      Show full-body pose tracking overlay
+      Show optional body-tracking diagnostics
     </label>
-    <p class="hint">The body overlay now combines smoothed pose landmarks with an optional person-segmentation mask when the browser model provides one. It helps inspect full-body framing and silhouette boundaries; it does not replace clothing or body identity.</p>
+    <p class="hint">Body tracking is off by default so the live camera stays clean. Turn it on only to inspect framing; its green mask and joint lines do not replace the body or clothing.</p>
     <p id="bodyFrameStatus" class="hint" role="status">Enable body tracking to check whether your full body is in frame.</p>
     <p id="status">Camera is stopped.</p>
     <p class="hint">Use only a face image you own or have explicit permission to use, and disclose altered video to call participants. Use a clear, front-facing photo with one visible face. For full-body framing, place your phone farther away and keep your head clearly visible. The selected image is processed locally in this browser session.</p>
@@ -702,9 +704,13 @@
     const clearFaceButton = document.getElementById("clearFaceButton");
     const permission = document.getElementById("permission");
     const showSwap = document.getElementById("showSwap");
-    // Always start with the legacy triangle-mesh preview disabled, even if the browser restores form state.
+    // The legacy triangle warp is permanently disabled in the live workspace:
+    // it is a geometry demo, not realistic identity transfer.
     showSwap.checked = false;
+    showSwap.disabled = true;
     const showBodyPose = document.getElementById("showBodyPose");
+    // Browsers can restore old checkbox state. Start in a clean camera-only view.
+    showBodyPose.checked = false;
     const bodyFrameStatus = document.getElementById("bodyFrameStatus");
     const status = document.getElementById("status");
     const cameraPlaceholder = document.getElementById("cameraPlaceholder");
