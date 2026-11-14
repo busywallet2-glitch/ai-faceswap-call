@@ -295,7 +295,7 @@ const required = [
   "Processed video frame received.",
   "The neural engine started but produced no visible video frame within 15 seconds.",
   "await withTimeout(neuralOutputVideo.play(), 15000",
-  "neuralSwap.process(cameraStream.getVideoTracks()[0]",
+  "neuralSwap.process(sourceCameraStream.getVideoTracks()[0]",
   "sender.replaceTrack(track)",
   "aiConsent.checked = false",
   "id=\"engineConsole\"",
@@ -407,5 +407,28 @@ assert.ok(
   !/processedVideoMode !== expectedMode/.test(html),
   "Switching to the neural engine must not rebuild the outgoing WebRTC video stream."
 );
+
+
+const neuralEngineStart = html.indexOf("async function startNeuralFaceEngine() {");
+const neuralEngineEnd = html.indexOf("\n    function stopNeuralFaceEngine()", neuralEngineStart);
+assert.ok(neuralEngineStart >= 0 && neuralEngineEnd > neuralEngineStart,
+  "The neural engine startup must remain independently inspectable.");
+const neuralEngineSource = html.slice(neuralEngineStart, neuralEngineEnd);
+assert.ok(neuralEngineSource.includes("const startToken = ++neuralSwapStartToken;") &&
+  neuralEngineSource.includes("const cameraSessionToken = cameraStartToken;") &&
+  neuralEngineSource.includes("const sourceCameraStream = cameraStream;"),
+  "Neural startup must capture both its own operation token and the active camera session.");
+assert.ok((neuralEngineSource.match(/ensureCurrentSession\(\);/g) || []).length >= 6,
+  "Every asynchronous model, identity, and output stage must revalidate the active camera session.");
+assert.ok(neuralEngineSource.includes("if (startToken === neuralSwapStartToken)"),
+  "A stale startup must not reset controls belonging to a newer startup.");
+const stopNeuralStart = html.indexOf("function stopNeuralFaceEngine() {");
+assert.ok(stopNeuralStart >= 0 &&
+  html.slice(stopNeuralStart, stopNeuralStart + 150).includes("neuralSwapStartToken += 1;"),
+  "Stopping the neural engine must invalidate any pending startup.");
+const neuralStopCameraStart = html.indexOf("function stopCamera() {");
+assert.ok(neuralStopCameraStart >= 0 &&
+  html.slice(neuralStopCameraStart, neuralStopCameraStart + 150).includes("neuralSwapStartToken += 1;"),
+  "Stopping the camera must invalidate any pending neural startup.");
 
 console.log("Face Tracking Studio smoke tests passed.");
