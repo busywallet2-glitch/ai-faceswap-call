@@ -111,6 +111,7 @@ const required = [
   "smoothedPoseLandmarks = null;\n              clearBodySegmentationMask();",
   "outputSegmentationMasks: true",
   "poseResults.segmentationMasks?.[0]",
+  "else clearBodySegmentationMask();",
   "mask.getAsFloat32Array()",
   "segmentationMask.close()",
   "pixels.data[offset + 3] = Math.round(Math.min(0.34, confidence * 0.34) * 255)",
