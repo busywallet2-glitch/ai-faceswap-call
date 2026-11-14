@@ -115,6 +115,30 @@ assert.ok(
   /track\.addEventListener\("ended", \(\) => \{[\s\S]*?processedStream\?\.removeTrack\(audioTrack\)[\s\S]*?audioSender\.replaceTrack\(null\)/.test(html),
   "A disconnected microphone must be removed from the processed call stream and detached from the active sender."
 );
+const previewFitSource = html.slice(
+  html.indexOf("function fitCameraStageToActualVideo()"),
+  html.indexOf("function getProcessedCanvasSource()")
+);
+assert.ok(
+  previewFitSource.includes("cameraStage.style.aspectRatio = `${width} / ${height}`;") &&
+    previewFitSource.includes('cameraStage.classList.toggle("landscape", width > height);'),
+  "The preview must match the dimensions and orientation actually supplied by the camera."
+);
+assert.ok(
+  cameraStartupSource.includes("fitCameraStageToActualVideo();") &&
+    cameraStartupSource.includes("captureFraming.disabled = true;"),
+  "The live preview must fit the actual stream and lock orientation controls until the camera stops."
+);
+assert.ok(
+  /device supplied \${actualOrientation} video, so the preview has been resized/.test(html),
+  "The app must disclose when the device returns a different orientation than requested."
+);
+assert.ok(
+  /Experimental triangle-mesh preview \(can distort face edges; not the AI swap\)/.test(html) &&
+    /Jagged edges are expected/.test(html),
+  "The experimental mesh overlay must be clearly distinguished from actual neural face replacement."
+);
+
 const cameraReadyStatusIndex = html.lastIndexOf(
   'status.textContent = "Camera and face tracking are ready. Looking for a face...";'
 );
