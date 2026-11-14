@@ -1105,7 +1105,7 @@
       ctx.restore();
     }
 
-    function smoothFaceLandmarks(current, previous, response = 0.58) {
+    function smoothFaceLandmarks(current, previous) {
       if (!previous || previous.length !== current.length) {
         return current.map(point => ({ ...point }));
       }
@@ -1124,8 +1124,8 @@
         measuredPoints++;
       }
       const averageMovement = measuredPoints ? totalMovement / measuredPoints : 0;
-      const adaptiveResponse = Math.min(0.88, Math.max(0.28,
-        Math.max(response, 0.28) + averageMovement * 10
+      const adaptiveResponse = Math.min(0.88, Math.max(0.30,
+        0.30 + averageMovement * 14
       ));
 
       return current.map((point, index) => {
