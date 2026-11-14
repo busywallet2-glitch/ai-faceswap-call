@@ -18,11 +18,18 @@ assert.equal(
   `The browser module must parse as valid JavaScript.\\n${syntaxCheck.stderr || syntaxCheck.stdout}`
 );
 
-const poseSmoothingMatch = html.match(
-  /function smoothPoseLandmarks\(current, previous\) \{([\s\S]*?)\n    \}\n\n    function updateBodySegmentationMask/
+const poseSmoothingStart = html.indexOf("function smoothPoseLandmarks(current, previous) {");
+const poseSmoothingEnd = html.indexOf("\n    function updateBodySegmentationMask", poseSmoothingStart);
+assert.ok(
+  poseSmoothingStart >= 0 && poseSmoothingEnd > poseSmoothingStart,
+  "The pose smoothing helper must remain independently testable."
 );
-assert.ok(poseSmoothingMatch, "The pose smoothing helper must remain independently testable.");
-const smoothPoseLandmarks = new Function("current", "previous", poseSmoothingMatch[1] + "\n}");
+const poseSmoothingSource = html.slice(poseSmoothingStart, poseSmoothingEnd);
+const poseSmoothingBody = poseSmoothingSource.slice(
+  poseSmoothingSource.indexOf("{") + 1,
+  poseSmoothingSource.lastIndexOf("}")
+);
+const smoothPoseLandmarks = new Function("current", "previous", poseSmoothingBody);
 const firstPose = [
   { x: 0.2, y: 0.3, visibility: 0.9 },
   { x: 0.7, y: 0.6, visibility: 0.9 }
