@@ -96,7 +96,7 @@ The repository includes a GitHub Actions smoke test that runs with Node.js 20:
 node tests/smoke.mjs
 ```
 
-The smoke test parses the browser module for JavaScript syntax, checks key controls and safety/cleanup paths, and behavior-tests the pure body-landmark smoothing helper (including low-confidence joint handling). It does not run a browser, load the MediaPipe models, validate segmentation-mask rendering, test audio/video quality, or prove that calls work on a particular device.
+The smoke test parses the browser module for JavaScript syntax, checks key controls and safety/cleanup paths, and behavior-tests the pure body-landmark smoothing helper (including low-confidence joint handling). It also checks that neural output waits for a live decoded frame and times out instead of reporting success prematurely. It does not run a browser, load the MediaPipe models, validate segmentation-mask rendering, test audio/video quality, or prove that calls work on a particular device.
 
 ## Remaining engineering work
 
