@@ -426,9 +426,9 @@ const stopNeuralStart = html.indexOf("function stopNeuralFaceEngine() {");
 assert.ok(stopNeuralStart >= 0 &&
   html.slice(stopNeuralStart, stopNeuralStart + 150).includes("neuralSwapStartToken += 1;"),
   "Stopping the neural engine must invalidate any pending startup.");
-const stopCameraStart = html.indexOf("function stopCamera() {");
-assert.ok(stopCameraStart >= 0 &&
-  html.slice(stopCameraStart, stopCameraStart + 150).includes("neuralSwapStartToken += 1;"),
+const neuralStopCameraStart = html.indexOf("function stopCamera() {");
+assert.ok(neuralStopCameraStart >= 0 &&
+  html.slice(neuralStopCameraStart, neuralStopCameraStart + 150).includes("neuralSwapStartToken += 1;"),
   "Stopping the camera must invalidate any pending neural startup.");
 
 console.log("Face Tracking Studio smoke tests passed.");
