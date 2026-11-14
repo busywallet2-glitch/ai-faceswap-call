@@ -181,6 +181,11 @@ assert.ok(
   /Microphone unavailable; preview and tracking work, but calls need microphone access\./.test(html),
   "The app must explain when camera preview works but microphone access is unavailable."
 );
+
+assert.ok(
+  html.indexOf("renderCameraOnly();") < html.indexOf("navigator.mediaDevices.getUserMedia({\\n              audio:"),
+  "The camera preview must become live before the app requests microphone permission."
+);
 assert.ok(
   /if \(cameraStream !== activeCameraStream\) \{\s*microphoneStream\.getTracks\(\)\.forEach\(track => track\.stop\(\)\);\s*return;\s*\}/.test(html),
   "A microphone granted after camera disconnect must be stopped immediately."
