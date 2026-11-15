@@ -408,4 +408,87 @@ assert.ok(
   "Switching to the neural engine must not rebuild the outgoing WebRTC video stream."
 );
 
+
+const alteredDisclosureMarkup =
+  html.includes('id="alteredDisclosureBadge"') &&
+  html.includes('id="outputDisclosureBadge"') &&
+  html.includes('id="outputPreviewWrap"');
+assert.ok(alteredDisclosureMarkup,
+  "The camera and processed-output previews must expose a visible altered-video disclosure badge.");
+assert.ok(
+  /When live AI face replacement is active, the outgoing video includes a persistent AI-ALTERED VIDEO label\./.test(html) &&
+    /Keep it visible and tell the other participant before connecting\./.test(html),
+  "The call panel must tell the user that the recipient receives a visible alteration disclosure."
+);
+
+const disclosureHelpersStart = html.indexOf("function isNeuralOutputActive() {");
+const disclosureHelpersEnd = html.indexOf("\n    function renderCameraOnly()", disclosureHelpersStart);
+assert.ok(disclosureHelpersStart >= 0 && disclosureHelpersEnd > disclosureHelpersStart,
+  "The outgoing altered-video disclosure helpers must remain independently testable.");
+const disclosureHelpersSource = html.slice(disclosureHelpersStart, disclosureHelpersEnd);
+assert.ok(
+  disclosureHelpersSource.includes("alteredDisclosureBadge.hidden = !visible;") &&
+    disclosureHelpersSource.includes("outputDisclosureBadge.hidden = !visible;") &&
+    disclosureHelpersSource.includes('const label = "AI-ALTERED VIDEO";') &&
+    disclosureHelpersSource.includes("ctx.fillText(label,"),
+  "The local badges and outgoing canvas watermark must be enabled only for live neural output."
+);
+
+const disclosureDrawCalls = [];
+const disclosureContext = {
+  save() {},
+  restore() {},
+  setTransform() {},
+  measureText: label => ({ width: label.length * 8 }),
+  fillRect: (...args) => disclosureDrawCalls.push({ type: "rect", args }),
+  fillText: (...args) => disclosureDrawCalls.push({ type: "text", text: args[0] })
+};
+const disclosureTrack = { readyState: "live" };
+const disclosureVideo = { readyState: 2 };
+const localDisclosureBadge = { hidden: true };
+const outputDisclosureBadge = { hidden: true };
+const drawAlteredDisclosure = new Function(
+  "ctx", "canvas", "neuralSwapTrack", "neuralOutputVideo",
+  "alteredDisclosureBadge", "outputDisclosureBadge",
+  `${disclosureHelpersSource}
+   return drawAlteredDisclosure;`
+)(
+  disclosureContext,
+  { width: 640 },
+  disclosureTrack,
+  disclosureVideo,
+  localDisclosureBadge,
+  outputDisclosureBadge
+);
+drawAlteredDisclosure();
+assert.equal(localDisclosureBadge.hidden, false,
+  "The camera preview disclosure must appear while neural output is live.");
+assert.equal(outputDisclosureBadge.hidden, false,
+  "The processed preview disclosure must appear while neural output is live.");
+assert.ok(disclosureDrawCalls.some(call =>
+  call.type === "text" && call.text === "AI-ALTERED VIDEO"),
+  "The actual canvas-captured outgoing video must contain the AI-ALTERED VIDEO watermark.");
+disclosureDrawCalls.length = 0;
+disclosureTrack.readyState = "ended";
+drawAlteredDisclosure();
+assert.equal(localDisclosureBadge.hidden, true,
+  "The camera preview disclosure must clear when neural output stops.");
+assert.equal(outputDisclosureBadge.hidden, true,
+  "The processed preview disclosure must clear when neural output stops.");
+assert.equal(disclosureDrawCalls.length, 0,
+  "Raw camera fallback must not be mislabeled as AI-altered.");
+
+assert.equal((html.match(/drawAlteredDisclosure\(\);/g) || []).length, 2,
+  "Both camera-only and face-tracking canvas render loops must apply the outgoing disclosure watermark.");
+const processedOutputStart = html.indexOf("async function startProcessedOutput() {");
+const processedOutputEnd = html.indexOf("async function syncActiveCallTracks()", processedOutputStart);
+assert.ok(processedOutputStart >= 0 && processedOutputEnd > processedOutputStart &&
+  html.slice(processedOutputStart, processedOutputEnd).includes('outputPreviewWrap.style.display = "block";'),
+  "The processed output disclosure badge must be shown with the outgoing preview.");
+const stopOutputStart = html.indexOf("function stopProcessedOutput() {");
+const stopOutputEnd = html.indexOf("async function startProcessedOutput()", stopOutputStart);
+assert.ok(stopOutputStart >= 0 && stopOutputEnd > stopOutputStart &&
+  html.slice(stopOutputStart, stopOutputEnd).includes('outputPreviewWrap.style.display = "none";'),
+  "Stopping or hiding the local processed preview must also hide its local disclosure badge.");
+
 console.log("Face Tracking Studio smoke tests passed.");

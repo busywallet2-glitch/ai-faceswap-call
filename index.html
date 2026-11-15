@@ -304,6 +304,18 @@
       width:100%; max-width:100%; max-height:420px; margin:14px 0;
       border-radius:14px; border:1px solid var(--line); background:#03050a;
     }
+    .altered-disclosure {
+      position:absolute; z-index:6; top:12px; left:50%; transform:translateX(-50%);
+      padding:7px 11px; border:1px solid rgba(255,255,255,.3); border-radius:999px;
+      background:rgba(122,24,48,.94); color:#fff; font-size:12px; font-weight:850;
+      letter-spacing:.08em; white-space:nowrap; pointer-events:none;
+      box-shadow:0 4px 16px rgba(0,0,0,.4);
+    }
+    .altered-disclosure[hidden] { display:none !important; }
+    .output-preview-wrap {
+      display:none; position:relative; width:100%; max-width:100%; margin:14px 0;
+    }
+    .output-preview-wrap #outputPreview { margin:0; }
     .framing-guide-label { background:rgba(7,12,23,.9); }
     #bodyFrameStatus { min-height: 34px; }
     .hint + button { margin-top:8px; }
@@ -375,6 +387,7 @@
     <div id="cameraPlaceholder" role="status">Camera is off. Tap “Start Camera” to begin.</div>
     <video id="camera" autoplay playsinline muted></video>
     <canvas id="overlay"></canvas>
+    <div id="alteredDisclosureBadge" class="altered-disclosure" hidden>AI-ALTERED VIDEO</div>
     <div id="framingGuide" class="framing-guide" aria-hidden="true">
       <div class="framing-person">
         <div class="framing-head"></div>
@@ -424,12 +437,16 @@
     <p class="hint">Preview the camera image after browser-side processing. This output is a foundation for a browser video-call connection; it is not a system-wide virtual camera.</p>
     <button id="outputButton" type="button" disabled>Enable Processed Output</button>
     <button id="stopOutputButton" type="button" disabled>Stop Processed Output</button>
-    <video id="outputPreview" autoplay playsinline muted></video>
+    <div id="outputPreviewWrap" class="output-preview-wrap">
+        <video id="outputPreview" autoplay playsinline muted></video>
+        <div id="outputDisclosureBadge" class="altered-disclosure" hidden>AI-ALTERED VIDEO</div>
+      </div>
   </div>
 
   <div class="panel">
     <h2>Private Browser Video Call</h2>
     <p class="hint">Create a call ID and share it with the other person. Both people open this page, enable their camera and microphone, then connect using the ID. Calls use peer-to-peer WebRTC where network conditions allow.</p>
+    <p class="hint">When live AI face replacement is active, the outgoing video includes a persistent AI-ALTERED VIDEO label. Keep it visible and tell the other participant before connecting.</p>
     <div class="panel" style="margin:12px 0;padding:15px;background:rgba(8,12,22,.62)">
       <h3>Call network reliability</h3>
       <p class="hint">The default PeerJS network configuration is used when these fields are blank. If a mobile or office network blocks direct connections, add a TURN relay supplied by a trusted provider. These credentials stay in this page's memory and are not saved to the project.</p>
@@ -722,6 +739,9 @@
     const outputButton = document.getElementById("outputButton");
     const stopOutputButton = document.getElementById("stopOutputButton");
     const outputPreview = document.getElementById("outputPreview");
+    const outputPreviewWrap = document.getElementById("outputPreviewWrap");
+    const alteredDisclosureBadge = document.getElementById("alteredDisclosureBadge");
+    const outputDisclosureBadge = document.getElementById("outputDisclosureBadge");
     const connectButton = document.getElementById("connectButton");
     const myPeerId = document.getElementById("myPeerId");
     const remotePeerId = document.getElementById("remotePeerId");
@@ -883,12 +903,50 @@
         : video;
     }
 
+    function isNeuralOutputActive() {
+      return Boolean(neuralSwapTrack &&
+        neuralSwapTrack.readyState === "live" &&
+        neuralOutputVideo.readyState >= 2);
+    }
+
+    function syncAlteredDisclosure() {
+      const visible = isNeuralOutputActive();
+      alteredDisclosureBadge.hidden = !visible;
+      outputDisclosureBadge.hidden = !visible;
+      return visible;
+    }
+
+    // This label is burned into the captured canvas, so the remote participant
+    // sees the disclosure in the actual outgoing WebRTC video track.
+    function drawAlteredDisclosure() {
+      if (!syncAlteredDisclosure()) return;
+      const label = "AI-ALTERED VIDEO";
+      const padding = Math.max(8, Math.round(canvas.width * 0.012));
+      const fontSize = Math.max(12, Math.min(20, Math.round(canvas.width * 0.022)));
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.font = `800 ${fontSize}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const textWidth = ctx.measureText(label).width;
+      const badgeWidth = Math.min(canvas.width - padding * 2, textWidth + padding * 2);
+      const badgeHeight = fontSize + padding;
+      const x = (canvas.width - badgeWidth) / 2;
+      const y = padding;
+      ctx.fillStyle = "rgba(122, 24, 48, 0.94)";
+      ctx.fillRect(x, y, badgeWidth, badgeHeight);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(label, canvas.width / 2, y + badgeHeight / 2, badgeWidth - padding);
+      ctx.restore();
+    }
+
     function renderCameraOnly() {
       if (!cameraStream || video.readyState < 2) return;
       const source = getProcessedCanvasSource();
       ctx.setTransform(1,0,0,1,0,0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+      drawAlteredDisclosure();
       animationFrame = requestAnimationFrame(renderCameraOnly);
     }
 
@@ -1338,6 +1396,7 @@
         const processedSource = getProcessedCanvasSource();
         try { ctx.drawImage(processedSource, 0, 0, canvas.width, canvas.height); }
         catch (renderError) { console.warn("Processed preview frame was skipped.", renderError); }
+        drawAlteredDisclosure();
       }
 
       if (video.readyState >= 2 && video.currentTime !== lastVideoTime &&
@@ -1748,6 +1807,7 @@
         outputPreview.pause();
         outputPreview.srcObject = null;
         outputPreview.style.display = "none";
+        outputPreviewWrap.style.display = "none";
         stopOutputButton.disabled = false;
         outputButton.disabled = false;
         status.textContent = "Local preview hidden. The processed video and microphone remain active for your call. Tap Enable Processed Output to show the local preview again.";
@@ -1759,6 +1819,7 @@
       outputPreview.pause();
       outputPreview.srcObject = null;
       outputPreview.style.display = "none";
+        outputPreviewWrap.style.display = "none";
       outputButton.disabled = !cameraStream || (!neuralSwapTrack && typeof canvas.captureStream !== "function");
       processedVideoMode = null;
       stopOutputButton.disabled = true;
@@ -1779,6 +1840,7 @@
           if (processedAudio) processedStream.addTrack(processedAudio);
         }
         outputPreview.srcObject = processedStream;
+        outputPreviewWrap.style.display = "block";
         outputPreview.style.display = "block";
         await outputPreview.play();
         await syncActiveCallTracks();
