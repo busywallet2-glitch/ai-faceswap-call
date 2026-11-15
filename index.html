@@ -1396,7 +1396,6 @@
         const processedSource = getProcessedCanvasSource();
         try { ctx.drawImage(processedSource, 0, 0, canvas.width, canvas.height); }
         catch (renderError) { console.warn("Processed preview frame was skipped.", renderError); }
-        drawAlteredDisclosure();
       }
 
       if (video.readyState >= 2 && video.currentTime !== lastVideoTime &&
@@ -1479,6 +1478,8 @@
       } else if (!showBodyPose.checked && bodyMaskAvailable) {
         clearBodySegmentationMask();
       }
+      // Draw last so diagnostics cannot obscure the recipient-facing disclosure.
+      drawAlteredDisclosure();
       animationFrame = requestAnimationFrame(detectFace);
     }
 
@@ -1819,7 +1820,7 @@
       outputPreview.pause();
       outputPreview.srcObject = null;
       outputPreview.style.display = "none";
-        outputPreviewWrap.style.display = "none";
+      outputPreviewWrap.style.display = "none";
       outputButton.disabled = !cameraStream || (!neuralSwapTrack && typeof canvas.captureStream !== "function");
       processedVideoMode = null;
       stopOutputButton.disabled = true;

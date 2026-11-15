@@ -480,6 +480,14 @@ assert.equal(disclosureDrawCalls.length, 0,
 
 assert.equal((html.match(/drawAlteredDisclosure\(\);/g) || []).length, 2,
   "Both camera-only and face-tracking canvas render loops must apply the outgoing disclosure watermark.");
+const detectFaceDisclosureStart = html.indexOf("function detectFace() {");
+const detectFaceDisclosureEnd = html.indexOf("\\n    function ", detectFaceDisclosureStart + 1);
+const detectFaceDisclosureSource = html.slice(detectFaceDisclosureStart, detectFaceDisclosureEnd);
+assert.ok(
+  detectFaceDisclosureSource.indexOf("drawBodyPose(lastPoseLandmarks);") <
+    detectFaceDisclosureSource.lastIndexOf("drawAlteredDisclosure();"),
+  "The outgoing disclosure watermark must render after body diagnostics so it remains visible."
+);
 const processedOutputStart = html.indexOf("async function startProcessedOutput() {");
 const processedOutputEnd = html.indexOf("async function syncActiveCallTracks()", processedOutputStart);
 assert.ok(processedOutputStart >= 0 && processedOutputEnd > processedOutputStart &&
