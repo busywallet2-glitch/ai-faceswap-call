@@ -1766,6 +1766,7 @@
         neuralSwapTrack.addEventListener("ended", () => {
           neuralOutputVideo.pause();
           neuralOutputVideo.srcObject = null;
+          syncAlteredDisclosure();
           aiEngineStatus.textContent = "Neural output stopped. The live camera/call feed has fallen back to the original camera.";
           aiEngineStats.textContent = "Neural video track ended; original camera is being used.";
         }, {once:true});
@@ -1793,6 +1794,7 @@
       neuralOutputVideo.srcObject=null;
       if(neuralSwap){try{neuralSwap.dispose();}catch(_){} }
       neuralSwap=null;
+      syncAlteredDisclosure();
       // Keep the processed canvas stream alive. During a call it seamlessly falls back
       // to the raw camera instead of ending the sender track or dropping the call.
       stopAIButton.disabled=true;
@@ -2081,6 +2083,7 @@
       closeActiveCall();
       stopProcessedOutput();
       if (neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack = null;
+      syncAlteredDisclosure();
       neuralOutputVideo.pause(); neuralOutputVideo.srcObject = null;
       if (neuralSwap) { try { neuralSwap.dispose(); } catch (_) {} } neuralSwap = null;
       stopAIButton.disabled = true;

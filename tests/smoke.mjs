@@ -481,13 +481,23 @@ assert.equal(disclosureDrawCalls.length, 0,
 assert.equal((html.match(/drawAlteredDisclosure\(\);/g) || []).length, 2,
   "Both camera-only and face-tracking canvas render loops must apply the outgoing disclosure watermark.");
 const detectFaceDisclosureStart = html.indexOf("function detectFace() {");
-const detectFaceDisclosureEnd = html.indexOf("\\n    function ", detectFaceDisclosureStart + 1);
+const detectFaceDisclosureEnd = html.indexOf("\n    function ", detectFaceDisclosureStart + 1);
 const detectFaceDisclosureSource = html.slice(detectFaceDisclosureStart, detectFaceDisclosureEnd);
 assert.ok(
   detectFaceDisclosureSource.indexOf("drawBodyPose(lastPoseLandmarks);") <
     detectFaceDisclosureSource.lastIndexOf("drawAlteredDisclosure();"),
   "The outgoing disclosure watermark must render after body diagnostics so it remains visible."
 );
+const stopNeuralDisclosureStart = html.indexOf("function stopNeuralFaceEngine() {");
+const stopNeuralDisclosureEnd = html.indexOf("function stopProcessedOutput()", stopNeuralDisclosureStart);
+assert.ok(stopNeuralDisclosureStart >= 0 && stopNeuralDisclosureEnd > stopNeuralDisclosureStart &&
+  html.slice(stopNeuralDisclosureStart, stopNeuralDisclosureEnd).includes("syncAlteredDisclosure();"),
+  "Stopping neural replacement must immediately hide the altered-video disclosure.");
+const stopCameraDisclosureStart = html.indexOf("function stopCamera() {");
+const stopCameraDisclosureEnd = html.indexOf("function clearUploadedFace()", stopCameraDisclosureStart);
+assert.ok(stopCameraDisclosureStart >= 0 && stopCameraDisclosureEnd > stopCameraDisclosureStart &&
+  html.slice(stopCameraDisclosureStart, stopCameraDisclosureEnd).includes("syncAlteredDisclosure();"),
+  "Stopping the camera must immediately hide the altered-video disclosure.");
 const processedOutputStart = html.indexOf("async function startProcessedOutput() {");
 const processedOutputEnd = html.indexOf("async function syncActiveCallTracks()", processedOutputStart);
 assert.ok(processedOutputStart >= 0 && processedOutputEnd > processedOutputStart &&
