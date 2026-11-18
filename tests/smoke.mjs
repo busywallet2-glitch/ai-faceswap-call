@@ -5,6 +5,22 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
+const manifest = JSON.parse(readFileSync(new URL("../manifest.webmanifest", import.meta.url), "utf8"));
+assert.equal(manifest.name, "Busywallet AI Face Swap Studio");
+assert.equal(manifest.display, "standalone");
+assert.equal(manifest.start_url, "./");
+assert.ok(manifest.icons.some(icon => icon.src === "./icon.svg"));
+const serviceWorker = readFileSync(new URL("../sw.js", import.meta.url), "utf8");
+assert.ok(serviceWorker.includes('self.addEventListener("install"'));
+assert.ok(serviceWorker.includes('self.addEventListener("activate"'));
+assert.ok(serviceWorker.includes('request.mode === "navigate"'));
+assert.ok(serviceWorker.includes('caches.match("./index.html")'));
+assert.ok(html.includes('<link rel="manifest" href="./manifest.webmanifest">'));
+assert.ok(html.includes('id="installAppButton"'));
+assert.ok(html.includes('navigator.serviceWorker.register("./sw.js", { scope: "./" })'));
+assert.ok(html.includes('window.addEventListener("beforeinstallprompt"'));
+
+
 assert.match(html, /let cameraStartToken = 0;/,
   "Camera startup must have a session token so late permission results can be discarded.");
 const cameraStartupStart = html.indexOf("async function startCamera() {");
