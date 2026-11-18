@@ -297,6 +297,7 @@ const required = [
   "const isCurrentStart = () => startToken === neuralSwapStartToken && cameraStream === sessionStream && uploadedFace === sourceFace",
   "if (!isCurrentStart()) return",
   "neuralSwapStartToken += 1",
+  "aiProgress.hidden = true",
   "neuralOutputVideo.readyState < 2",
   "Processed video frame received.",
   "The neural engine started but produced no visible video frame within 15 seconds.",
