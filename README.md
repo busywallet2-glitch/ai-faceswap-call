@@ -32,7 +32,7 @@ A mobile-first, consent-first browser studio with a premium interface, experimen
 - The neural engine checks GPU capabilities, verifies downloaded model files against SHA-256 fingerprints, reports model download progress and live inference performance, and checks the uploaded portrait for quality issues.
 
 - The outgoing call video now uses one persistent canvas-capture track. The neural engine's decoded output is composited into that canvas, so turning face replacement on/off does not replace the WebRTC sender track or require reconnecting the call. If neural inference ends, the canvas falls back to the live camera instead of freezing the call.
-- A user can upload a face image, confirm they have permission to use it, and preview experimental landmark/triangle alignment.
+- A user can upload a face image and confirm permission before enabling the experimental neural face-replacement engine. The legacy landmark/triangle warp is disabled in the live workspace because it distorts faces.
 - A full-body framing guide helps position the phone to keep the subject head-to-toe in view.
 - The camera can be switched between front and rear lenses before starting, making it easier to set up a tripod or full-body shot.
 - Portrait and landscape capture modes request different aspect ratios; portrait mode is the default for head-to-toe framing. The preview stage adapts to the selected orientation and the app reports actual camera resolution when the device exposes it.
@@ -52,7 +52,7 @@ A mobile-first, consent-first browser studio with a premium interface, experimen
 
 This is an **experimental prototype, not a finished or production-ready face-swap or calling product**.
 
-- The legacy landmark/triangle warp remains available as an optional experimental overlay; it is not the neural replacement and should not be mistaken for realistic identity transfer.
+- The legacy landmark/triangle warp is disabled in the live workspace because it distorts faces; it is not the neural replacement and should not be re-enabled as a substitute for identity transfer.
 - The neural replacement is experimental and not guaranteed photorealistic. It depends on source-photo quality, pose, lighting, browser support, and GPU performance. The first run downloads several hundred MB of model files. CPU/WASM fallback is not suitable for live performance on most devices.
 - The neural model has not been end-to-end verified on the user's Android phone or across supported desktop GPUs. GitHub source checks do not prove live inference works in a particular browser.
 - Face replacement still affects the face only. The pose and segmentation overlays track/visualize the visible person but do not replace the whole body, clothing, or identity; the framing guide is only a positioning aid.
@@ -75,7 +75,7 @@ This is an **experimental prototype, not a finished or production-ready face-swa
 6. Enable **Processed Camera Output** or start a browser call. The neural output is composited into a persistent canvas track, so switching the engine on/off does not intentionally replace the WebRTC sender track. The old landmark overlay is separate and remains off by default.
 4. To test calling, create a call ID on one device, share it with a consenting person, and use that ID from the second browser. Both sides must allow camera/microphone permissions.
 5. To test translated captions, select a target language, tick the translation consent checkbox, and start English captions.
-6. Stop the camera, call, captions, and microphone when finished.
+7. Stop the camera, call, captions, and microphone when finished.
 
 Browser support varies. Speech recognition is not available in every browser. A stable internet connection is required for external libraries, PeerJS signaling, browser speech recognition where online, and translation.
 
