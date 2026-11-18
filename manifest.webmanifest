@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "Busywallet AI Face Swap Studio",
+  "short_name": "Busywallet Studio",
+  "description": "A consent-first camera, face tracking and browser calling studio.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#080a12",
+  "theme_color": "#080a12",
+  "categories": ["photo", "video", "utilities"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
