@@ -1753,6 +1753,7 @@
     function stopNeuralFaceEngine() {
       neuralSwapStartToken += 1;
       neuralSwapStarting = false;
+      aiProgress.hidden = true;
       if(neuralSwapTrack) neuralSwapTrack.stop();
       neuralSwapTrack=null;
       neuralOutputVideo.pause();
@@ -2042,6 +2043,7 @@
       cameraStartToken += 1;
       neuralSwapStartToken += 1;
       neuralSwapStarting = false;
+      aiProgress.hidden = true;
       if (activeCall) { try { activeCall.close(); } catch (_) {} }
       closeActiveCall();
       stopProcessedOutput();
@@ -2080,6 +2082,7 @@
       imageLoadToken += 1;
       neuralSwapStartToken += 1;
       neuralSwapStarting = false;
+      aiProgress.hidden = true;
       if (neuralSwap) stopNeuralFaceEngine();
       aiConsent.checked = false;
       startAIButton.disabled = true;
@@ -2121,6 +2124,7 @@
       aiConsent.checked = false;
       neuralSwapStartToken += 1;
       neuralSwapStarting = false;
+      aiProgress.hidden = true;
       if (neuralSwap) stopNeuralFaceEngine();
       faceAngleFiles.value = "";
       faceAngleImages = [];
