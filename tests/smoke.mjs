@@ -288,7 +288,7 @@ const required = [
   "const caps = await probe()",
   "KNOWN_SHA256.swapperFp16",
   "facefusion-assets/releases/download/models/inswapper_128_fp16.onnx",
-  "neuralSwap.findFaces(uploadedFace)",
+  "neuralSwap.findFaces(sourceFace)",
   "function waitForNeuralVideoFrame(timeoutMs = 15000)",
   "await waitForNeuralVideoFrame()",
   "neuralSwapStartToken",
