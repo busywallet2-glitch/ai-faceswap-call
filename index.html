@@ -792,6 +792,8 @@
     let neuralSwapTrack = null;
     let neuralSwapModule = null;
     let neuralSwapStarting = false;
+    // Invalidates in-flight model loads when the user stops the engine, camera, or source face.
+    let neuralSwapStartToken = 0;
     let processedVideoMode = null;
 
     function withTimeout(promise, milliseconds, message) {
@@ -1655,16 +1657,22 @@
       if (!cameraStream || !cameraStream.getVideoTracks().length) { aiEngineStatus.textContent = "Start the camera before loading the neural engine."; return; }
       if (!uploadedFace) { aiEngineStatus.textContent = "Upload a clear, front-facing face photo first."; return; }
       if (!permission.checked || !aiConsent.checked) { aiEngineStatus.textContent = "Confirm permission for the uploaded face before continuing."; return; }
+      const startToken = ++neuralSwapStartToken;
+      const sessionStream = cameraStream;
+      const sourceFace = uploadedFace;
+      const isCurrentStart = () => startToken === neuralSwapStartToken && cameraStream === sessionStream && uploadedFace === sourceFace;
+      let candidateEngine = null;
       neuralSwapStarting = true; startAIButton.disabled = true; aiProgress.hidden = false; aiProgress.value = 0;
       aiEngineStatus.textContent = "Checking browser GPU support…";
       try {
         if (!neuralSwapModule) neuralSwapModule = await import("https://esm.sh/browser-inswapper@0.1.0");
+        if (!isCurrentStart()) return;
         const createFaceSwap = neuralSwapModule.createFaceSwap, KNOWN_SHA256 = neuralSwapModule.KNOWN_SHA256, probe = neuralSwapModule.probe;
         const caps = await probe();
+        if (!isCurrentStart()) return;
         aiEngineStats.textContent = "WebGPU: " + (caps.webgpu && caps.webgpu.available ? "available" : "not available") + " · WebNN: " + (caps.webnn ? "available" : "not available");
         if (!(caps.webgpu && caps.webgpu.available) && !caps.webnn) throw new Error("This browser has no supported GPU inference backend. CPU fallback is not suitable for live swapping on most phones. Try updated Chrome on a supported device or use the desktop GPU setup.");
         aiEngineStatus.textContent = "Loading neural models. The first download can be around 300 MB; keep this page open on a stable connection.";
-        const hf = "https://huggingface.co/";
         const models = {
           landmarker:{url:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",sha256:KNOWN_SHA256.landmarker},
           swapperFp16:{url:"https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128_fp16.onnx",sha256:KNOWN_SHA256.swapperFp16},
@@ -1672,34 +1680,42 @@
           arcface:{url:"https://huggingface.co/ApacheOne/insightface/resolve/main/insightface/models/buffalo_l/w600k_r50.onnx",sha256:KNOWN_SHA256.arcface},
           segmenter:{url:"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite",sha256:KNOWN_SHA256.segmenter}
         };
-        neuralSwap = await createFaceSwap({models:models,backend:"auto",
-          onProgress:({model,loaded,total})=>{aiProgress.max=total||1;aiProgress.value=loaded;aiEngineStatus.textContent="Downloading/verifying "+model+" · "+Math.round(loaded/1000000)+" MB";},
-          onStats:({fps,inferMs,backend,latencyMs})=>{aiEngineStats.textContent=backend.toUpperCase()+" · "+Math.round(fps)+" output fps · "+Math.round(inferMs)+" ms inference · "+latencyMs+" ms latency";},
+        candidateEngine = await createFaceSwap({models:models,backend:"auto",
+          onProgress:({model,loaded,total})=>{if(!isCurrentStart())return;aiProgress.max=total||1;aiProgress.value=loaded;aiEngineStatus.textContent="Downloading/verifying "+model+" · "+Math.round(loaded/1000000)+" MB";},
+          onStats:({fps,inferMs,backend,latencyMs})=>{if(!isCurrentStart())return;aiEngineStats.textContent=backend.toUpperCase()+" · "+Math.round(fps)+" output fps · "+Math.round(inferMs)+" ms inference · "+latencyMs+" ms latency";},
           onLog:(message)=>console.info("[neural-face-swap]",message)
         });
+        if (!isCurrentStart()) { try { candidateEngine.dispose(); } catch (_) {} candidateEngine = null; return; }
+        neuralSwap = candidateEngine;
+        candidateEngine = null;
         aiEngineStatus.textContent = "Checking the uploaded portrait for face quality…";
-        const detectedFaces = await neuralSwap.findFaces(uploadedFace);
+        const detectedFaces = await neuralSwap.findFaces(sourceFace);
+        if (!isCurrentStart()) return;
         if (!detectedFaces.length) throw new Error("No face was detected in the uploaded portrait. Choose a clear photo with one visible face.");
         const selectedFace = detectedFaces[0];
         const qualityNotes = selectedFace.issues.map(issue => ({small:"small face",turned:"side-facing",blurry:"blurry",dark:"dark",bright:"overexposed"}[issue] || issue));
         if (faceAngleImages.length) {
           aiEngineStatus.textContent = "Building multi-angle identity views for more consistent head turns…";
-          const identityImages = [uploadedFace, ...faceAngleImages];
+          const identityImages = [sourceFace, ...faceAngleImages];
           const views = await Promise.all(identityImages.map(image => neuralSwap.identityView({image})));
+          if (!isCurrentStart()) return;
           await neuralSwap.setIdentity({views});
         } else {
-          await neuralSwap.setIdentity({image:uploadedFace,face:selectedFace});
+          await neuralSwap.setIdentity({image:sourceFace,face:selectedFace});
         }
+        if (!isCurrentStart()) return;
         if (selectedFace.preview) selectedFace.preview.close();
         aiEngineStats.textContent = qualityNotes.length ? "Portrait quality warning: " + qualityNotes.join(", ") + ". Use sharp, evenly lit photos with the face clearly visible." : "Portrait quality check passed.";
         if (faceAngleImages.length) aiEngineStats.textContent += " · " + faceAngleImages.length + " extra angle view(s) loaded.";
-        neuralSwapTrack = neuralSwap.process(cameraStream.getVideoTracks()[0],{maxFps:24});
+        neuralSwapTrack = neuralSwap.process(sessionStream.getVideoTracks()[0],{maxFps:24});
         if (!neuralSwapTrack || neuralSwapTrack.kind !== "video" || neuralSwapTrack.readyState !== "live") {
           throw new Error("The neural engine did not return a live video track.");
         }
         neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack]);
         await withTimeout(neuralOutputVideo.play(), 15000, "The browser did not start playback for the neural output track.");
+        if (!isCurrentStart()) return;
         await waitForNeuralVideoFrame();
+        if (!isCurrentStart()) return;
         if (neuralSwapTrack.readyState !== "live" || neuralOutputVideo.readyState < 2 || !neuralOutputVideo.videoWidth) {
           throw new Error("The neural output track opened but did not produce a decoded video frame. The original camera is still available.");
         }
@@ -1718,15 +1734,25 @@
         aiEngineStats.textContent += " · Processed video frame received.";
         stopAIButton.disabled = false; outputButton.disabled = false;
       } catch(error) {
+        if (!isCurrentStart()) return;
         console.error("Neural face engine could not start.",error);
         aiEngineStatus.textContent = "Neural engine unavailable: "+(error && error.message ? error.message : "Check browser support, model access, and connection.");
         if(neuralSwapTrack) neuralSwapTrack.stop(); neuralSwapTrack=null;
         neuralOutputVideo.pause(); neuralOutputVideo.srcObject = null;
         if(neuralSwap){try{neuralSwap.dispose();}catch(_){} } neuralSwap=null;
-      } finally { neuralSwapStarting=false; aiProgress.hidden=true; startAIButton.disabled=!(cameraStream&&uploadedFace&&permission.checked&&aiConsent.checked); }
+      } finally {
+        if (candidateEngine) { try { candidateEngine.dispose(); } catch (_) {} }
+        if (startToken === neuralSwapStartToken) {
+          neuralSwapStarting=false;
+          aiProgress.hidden=true;
+          startAIButton.disabled=!(cameraStream&&uploadedFace&&permission.checked&&aiConsent.checked);
+        }
+      }
     }
 
     function stopNeuralFaceEngine() {
+      neuralSwapStartToken += 1;
+      neuralSwapStarting = false;
       if(neuralSwapTrack) neuralSwapTrack.stop();
       neuralSwapTrack=null;
       neuralOutputVideo.pause();
@@ -2014,6 +2040,8 @@
 
     function stopCamera() {
       cameraStartToken += 1;
+      neuralSwapStartToken += 1;
+      neuralSwapStarting = false;
       if (activeCall) { try { activeCall.close(); } catch (_) {} }
       closeActiveCall();
       stopProcessedOutput();
@@ -2050,6 +2078,8 @@
 
     function clearUploadedFace() {
       imageLoadToken += 1;
+      neuralSwapStartToken += 1;
+      neuralSwapStarting = false;
       if (neuralSwap) stopNeuralFaceEngine();
       aiConsent.checked = false;
       startAIButton.disabled = true;
@@ -2089,6 +2119,8 @@
       }
       permission.checked = false;
       aiConsent.checked = false;
+      neuralSwapStartToken += 1;
+      neuralSwapStarting = false;
       if (neuralSwap) stopNeuralFaceEngine();
       faceAngleFiles.value = "";
       faceAngleImages = [];
