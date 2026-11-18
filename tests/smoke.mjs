@@ -302,7 +302,7 @@ const required = [
   "Processed video frame received.",
   "The neural engine started but produced no visible video frame within 15 seconds.",
   "await withTimeout(neuralOutputVideo.play(), 15000",
-  "neuralSwap.process(cameraStream.getVideoTracks()[0]",
+  "neuralSwap.process(sessionStream.getVideoTracks()[0]",
   "sender.replaceTrack(track)",
   "aiConsent.checked = false",
   "id=\"engineConsole\"",
