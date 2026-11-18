@@ -26,6 +26,9 @@ A mobile-first, consent-first browser studio with a premium interface, experimen
 
 ## Current features
 
+- The studio can be installed as a Progressive Web App on supported browsers. Its service worker caches the application shell for faster repeat loads and an offline landing screen; camera models, neural inference downloads, and peer calling still require a network connection.
+- The top-bar install control uses the native browser installation prompt where available and provides device-specific installation guidance otherwise.
+
 - Camera access begins only after the user chooses to start it.
 - MediaPipe Face Landmarker tracks a face in the camera stream.
 - An experimental neural face-replacement engine uses `browser-inswapper`, ONNX Runtime Web, an InsightFace identity model, and MediaPipe segmentation for face alignment and foreground-aware blending.
