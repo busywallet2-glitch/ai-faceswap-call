@@ -99,7 +99,12 @@ jobs:
           s = s.replace('        release {', '        release {\\n            signingConfig signingConfigs.release', 1)
           p.write_text(s)
           PY
-          echo "KEYSTORE_FILE=$RUNNER_TEMP/busywallet-release.jks" >> "$GITHUB_ENV"
+          {
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/busywallet-release.jks"
+            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          } >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         working-directory: android
