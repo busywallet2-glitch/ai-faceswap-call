@@ -62,7 +62,7 @@ jobs:
               'android.permission.RECORD_AUDIO',
               'android.permission.MODIFY_AUDIO_SETTINGS'
           ]
-          insert = ''.join(f'\\n    <uses-permission android:name="{x}" />' for x in permissions if x not in s)
+          insert = ''.join(chr(10) + f'    <uses-permission android:name="{x}" />' for x in permissions if x not in s)
           s = s[:pos+1] + insert + s[pos+1:]
           p.write_text(s)
           PY
@@ -95,8 +95,8 @@ jobs:
               }
           '''
           if 'signingConfigs {' not in s:
-              s = s.replace('    buildTypes {', signing + '\\n    buildTypes {', 1)
-          s = s.replace('        release {', '        release {\\n            signingConfig signingConfigs.release', 1)
+              s = s.replace('    buildTypes {', signing + chr(10) + '    buildTypes {', 1)
+          s = s.replace('        release {', '        release {' + chr(10) + '            signingConfig signingConfigs.release', 1)
           p.write_text(s)
           PY
           {
