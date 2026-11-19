@@ -1,15 +1,15 @@
-# Google Play Store Listing — Busywallet Studio
+# Google Play Store Listing — Busywallet AI Face Swap
 
-**Working title:** Busywallet Studio — Face Tracking  
+**Official app name:** Busywallet AI Face Swap  
 **Suggested category:** Video Players & Editors (confirm against the final feature set)  
 **Suggested price:** USD $4.99 (paid app; confirm supported countries, taxes, and price tiers in Play Console)  
 **Target audience:** Adults; do not select children as a target audience.
 
 ## Short description
-A consent-first camera studio for face tracking, experimental face effects and browser video calls.
+A consent-first camera studio for face tracking, experimental AI face effects and browser video calls.
 
 ## Full description
-Busywallet Studio is an experimental camera and browser-calling workspace with face tracking and optional neural face replacement.
+Busywallet AI Face Swap is an experimental camera and browser-calling workspace with face tracking and optional neural face replacement.
 
 **Camera and tracking**
 - Start the camera only when you choose.
@@ -17,7 +17,7 @@ Busywallet Studio is an experimental camera and browser-calling workspace with f
 - Switch between front and rear cameras where supported.
 - Use portrait or landscape framing controls.
 
-**Experimental face effects**
+**Experimental AI face effects**
 - Load an optional neural face-replacement engine in supported browsers and devices.
 - Upload a portrait only when you have permission from the person shown.
 - Review performance and model-loading status before relying on the output.
