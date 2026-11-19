@@ -1,4 +1,4 @@
-# Android / Google Play Release Plan
+# Busywallet AI Face Swap — Android / Google Play Release Plan
 
 ## Current verified project state
 The repository is a static browser application hosted on GitHub Pages. It has a PWA manifest and service worker. The README explicitly describes it as an experimental prototype, says Android device testing is not complete, and notes that WhatsApp/Signal integration and system virtual-camera support are not present.
@@ -8,7 +8,7 @@ The repository is a static browser application hosted on GitHub Pages. It has a 
 ## Recommended packaging path
 Evaluate a Capacitor Android shell around the existing web application, then implement and test any required native integrations. A thin web wrapper may not provide enough functionality or quality for Play review. Confirm the final architecture and app behavior before committing to a permanent application ID.
 
-Suggested working application ID (must be checked for uniqueness before first Play upload): `com.busywallet.studio`.
+Suggested working application ID (must be checked for uniqueness before first Play upload): `com.busywallet.aifaceswap`.
 
 ## Required engineering work
 1. Create and configure a maintained Android project (Gradle, Android plugin, Capacitor version, SDK configuration and app signing).
