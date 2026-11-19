@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#080a12">
+<title>Privacy Policy — Busywallet Studio</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#080a12;color:#eef1fb}
+body{max-width:850px;margin:0 auto;padding:36px 22px 70px;line-height:1.7}
+h1,h2{color:#c9bcff;line-height:1.25}a{color:#83e4df}p,li{color:#c4cbe0}
+small{color:#9da8c2}.notice{border:1px solid #4d5570;border-radius:12px;padding:14px}
+</style>
+</head>
+<body>
+<h1>Privacy Policy — Busywallet Studio</h1>
+<p><small>Last updated: November 19, 2026</small></p>
+<p>This policy describes the current browser-based Busywallet Studio project, also referred to as Face Tracking Studio. The project is an experimental camera, face-tracking, face-replacement and browser-calling prototype. This policy must be reviewed and updated before any Android release if the packaged app, SDKs, servers or data practices differ.</p>
+<h2>1. Camera, microphone and images</h2>
+<p>Camera and microphone access starts only after you choose to start the relevant feature and grant your browser or device permission. The live camera stream is processed in your browser for face tracking, preview and optional experimental face replacement. The project does not currently operate a developer-hosted server that stores your camera feed.</p>
+<p>If you upload a portrait for face replacement, it is used by the browser-side processing feature. Use only your own image or an image whose subject has given informed permission. Do not upload sensitive images or images of anyone who has not consented.</p>
+<h2>2. Browser calls and sharing</h2>
+<p>If you start or join a call, audio and video are transmitted to the other call participant using WebRTC and the PeerJS signaling service. Network connection information may be processed by signaling and ICE/STUN/TURN infrastructure to establish the call. The project may use PeerJS's default signaling and ICE configuration, and an optional TURN server can be configured by the user. Do not assume calls are end-to-end encrypted beyond the protections provided by the underlying WebRTC implementation and services; review the services' current privacy terms.</p>
+<h2>3. Speech recognition and translation</h2>
+<p>Speech captions are optional and depend on browser support. Speech recognition may be provided by the browser or its underlying service; the app does not control whether that browser service processes audio remotely. If you enable translation, recognized speech text is sent to the MyMemory translation service to request translated captions. Do not enable these features for confidential conversations unless you have reviewed the relevant third-party privacy terms and obtained any required participant consent.</p>
+<h2>4. Third-party services and libraries</h2>
+<p>The project loads third-party libraries and models, including MediaPipe, ONNX Runtime Web, browser-inswapper/related model assets, PeerJS and optional MyMemory translation. These providers may receive network requests, technical information such as IP address and request metadata, and any information you explicitly send to their services. Their handling is governed by their own policies and terms. The app does not control third-party retention or processing.</p>
+<h2>5. Data storage, retention and deletion</h2>
+<p>The current browser prototype does not provide user accounts or a developer-operated cloud profile database. Camera and microphone streams are handled during the active session and should be stopped using the app controls or by closing the page. Uploaded portraits and processed frames are used by the local browser session; browser caches may retain application files for offline loading. Clear site data in your browser to remove the app's cached site files. Any information handled by third-party services is subject to those providers' retention and deletion policies.</p>
+<h2>6. Security</h2>
+<p>Use a current browser and device operating system. Keep call IDs and any TURN credentials private. Do not share sensitive personal information through captions or calls unless you understand the risks of the communication services you use.</p>
+<h2>7. Children</h2>
+<p>This experimental tool is not designed for children and is not intended to target children.</p>
+<h2>8. Changes to this policy</h2>
+<p>This policy may be updated when features, dependencies or data practices change. The revision date above will be updated when changes are made. The Google Play Data safety answers must accurately reflect the final shipped app and every included SDK.</p>
+<h2>9. Contact</h2>
+<p>For privacy questions or requests relating to this project, contact the project maintainer through the <a href="https://github.com/busywallet2-glitch/ai-faceswap-call/issues">GitHub project issue page</a>. Do not post sensitive personal data in a public issue; request a private contact route first.</p>
+<p class="notice"><strong>Release note:</strong> This policy is a project-specific starting point based on the current repository documentation. It is not legal advice and is not a substitute for auditing the exact Android build, SDK data collection, network traffic and store declarations before publication.</p>
+</body>
+</html>
