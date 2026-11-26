@@ -48,3 +48,19 @@ The capability response intentionally reports `full_body_live: false` until an a
 ## Next implementation milestone
 
 Choose and license a compatible open-source model, build a GPU worker adapter, benchmark end-to-end latency, then connect its output to the existing call track. The target is live full-body replacement; a UI toggle alone is not evidence that this capability works.
+
+## Run backend tests
+
+From the `backend` directory, install the development dependencies and run the API tests:
+
+```bash
+python -m venv .venv
+# Windows PowerShell:
+.venv\\Scripts\\Activate.ps1
+# macOS/Linux:
+# source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+The tests cover health reporting, capability/session status, and rejection of sessions without both required consents and visible disclosure. They verify the API contract only; they do not test GPU inference or real-time video processing.
