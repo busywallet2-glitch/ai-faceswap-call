@@ -310,7 +310,7 @@ const required = [
   "facefusion-assets/releases/download/models/inswapper_128_fp16.onnx",
   "neuralSwap.findFaces(sourceFace)",
   "function waitForNeuralVideoFrame(timeoutMs = 15000)",
-  "await waitForNeuralVideoFrame()",
+  "await waitForNeuralVideoFrame(cpuFallback ? 45000 : 15000)",
   "neuralSwapStartToken",
   "const sessionStream = cameraStream",
   "const sourceFace = uploadedFace",
