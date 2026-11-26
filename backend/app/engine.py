@@ -7,7 +7,7 @@ in memory, never persist camera frames, and return a processed JPEG frame.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,6 @@ class EngineInfo:
     supports_full_body: bool
 
 
-@runtime_checkable
 class FullBodyEngine(Protocol):
     """Adapter contract for a consent-gated, pose-preserving video model."""
 
@@ -52,10 +51,13 @@ class FullBodyEngine(Protocol):
 
 def validate_engine(engine: object) -> EngineInfo:
     """Reject partial or non-full-body adapters; never infer readiness from config."""
-    if not isinstance(engine, FullBodyEngine):
+    required_methods = ("initialize", "process_frame", "close_session", "shutdown")
+    if any(not callable(getattr(engine, name, None)) for name in required_methods):
         raise TypeError("Engine does not implement the full-body adapter contract.")
 
-    info = engine.info
+    info = getattr(engine, "info", None)
+    if not isinstance(info, EngineInfo):
+        raise TypeError("Engine must expose valid EngineInfo metadata.")
     if not info.supports_full_body:
         raise ValueError("Adapter does not support full-body identity replacement.")
     if not info.supports_temporal_video:
