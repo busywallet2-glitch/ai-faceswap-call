@@ -320,7 +320,7 @@ const required = [
   "aiProgress.hidden = true",
   "neuralOutputVideo.readyState < 2",
   "Processed video frame received.",
-  "The neural engine started but produced no visible video frame within 15 seconds.",
+  "The neural engine produced no decoded frame within ",
   "await withTimeout(neuralOutputVideo.play(), 15000",
   "neuralSwap.process(sessionStream.getVideoTracks()[0]",
   "sender.replaceTrack(track)",
