@@ -974,6 +974,32 @@
       return true;
     }
 
+    async function tuneCameraForFaceSwap(track) {
+      if (!track || track.readyState !== "live" || typeof track.getCapabilities !== "function") return;
+      try {
+        const capabilities = track.getCapabilities();
+        const advanced = [];
+        // Request continuous focus/exposure/white balance only when the camera exposes
+        // those modes. Unsupported controls are simply left to the browser.
+        if (Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes("continuous")) {
+          advanced.push({ focusMode: "continuous" });
+        }
+        if (Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.includes("continuous")) {
+          advanced.push({ exposureMode: "continuous" });
+        }
+        if (Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.includes("continuous")) {
+          advanced.push({ whiteBalanceMode: "continuous" });
+        }
+        if (advanced.length && typeof track.applyConstraints === "function") {
+          await track.applyConstraints({ advanced });
+        }
+      } catch (cameraTuningError) {
+        // Camera vendors expose different constraint subsets. Keep the live camera
+        // working even when optional focus/exposure controls are rejected.
+        console.info("Optional continuous camera tuning is unavailable.", cameraTuningError);
+      }
+    }
+
     function getProcessedCanvasSource() {
       return neuralSwapTrack && neuralSwapTrack.readyState === "live" && neuralOutputVideo.readyState >= 2
         ? neuralOutputVideo
@@ -1046,14 +1072,16 @@
           video: captureFraming.value === "portrait"
             ? {
                 facingMode: { ideal: cameraFacing.value },
-                width: { ideal: 720 },
-                height: { ideal: 1280 },
+                width: { ideal: 1080 },
+                height: { ideal: 1920 },
+                frameRate: { ideal: 30, max: 30 },
                 aspectRatio: { ideal: 9 / 16 }
               }
             : {
                 facingMode: { ideal: cameraFacing.value },
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                frameRate: { ideal: 30, max: 30 },
                 aspectRatio: { ideal: 16 / 9 }
               }
         });
@@ -1063,6 +1091,7 @@
         }
         cameraStream = acquiredCameraStream;
         const activeCameraStream = cameraStream;
+        await tuneCameraForFaceSwap(cameraStream.getVideoTracks()[0]);
         cameraStream.getVideoTracks().forEach(track => {
           track.addEventListener("ended", () => {
             if (cameraStream !== activeCameraStream) return;
