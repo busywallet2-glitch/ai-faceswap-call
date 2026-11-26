@@ -64,3 +64,9 @@ pytest -q
 ```
 
 The tests cover health reporting, capability/session status, and rejection of sessions without both required consents and visible disclosure. They verify the API contract only; they do not test GPU inference or real-time video processing.
+
+## Inference adapter contract
+
+The future model integration must implement `app/engine.py`'s `FullBodyEngine` contract. It must support full-body identity replacement and temporal video continuity, identify its model/version/device, process timestamped frames with per-session temporal state, and release session state when a call ends. A face-only or single-frame image model is rejected as insufficient for the live full-body target.
+
+No model is selected or bundled yet. The adapter interface is not an inference engine and does not make the API report live readiness. Keep `FULL_BODY_ENGINE_READY=false` until a concrete model adapter has passed real GPU and end-to-end call testing.
