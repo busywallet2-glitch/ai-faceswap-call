@@ -1807,7 +1807,7 @@
         };
         const timeout = setTimeout(() => {
           cleanup();
-          reject(new Error("The neural engine started but produced no visible video frame within 15 seconds. This device/browser may not have enough GPU support."));
+          reject(new Error("The neural engine produced no decoded frame within " + Math.round(timeoutMs / 1000) + " seconds. Check model downloads, browser support, and device performance."));
         }, timeoutMs);
         neuralOutputVideo.addEventListener("loadeddata", check);
         neuralOutputVideo.addEventListener("playing", check);
@@ -1826,6 +1826,7 @@
       const sourceFace = uploadedFace;
       const isCurrentStart = () => startToken === neuralSwapStartToken && cameraStream === sessionStream && uploadedFace === sourceFace;
       let candidateEngine = null;
+      let cpuFallback = false;
       neuralSwapStarting = true; startAIButton.disabled = true; aiProgress.hidden = false; aiProgress.value = 0;
       aiEngineStatus.textContent = "Checking browser GPU support…";
       try {
@@ -1834,9 +1835,13 @@
         const createFaceSwap = neuralSwapModule.createFaceSwap, KNOWN_SHA256 = neuralSwapModule.KNOWN_SHA256, probe = neuralSwapModule.probe;
         const caps = await probe();
         if (!isCurrentStart()) return;
+        const acceleratedBackendAvailable = Boolean((caps.webgpu && caps.webgpu.available) || caps.webnn);
+        cpuFallback = !acceleratedBackendAvailable;
         aiEngineStats.textContent = "WebGPU: " + (caps.webgpu && caps.webgpu.available ? "available" : "not available") + " · WebNN: " + (caps.webnn ? "available" : "not available");
-        if (!(caps.webgpu && caps.webgpu.available) && !caps.webnn) throw new Error("This browser has no supported GPU inference backend. CPU fallback is not suitable for live swapping on most phones. Try updated Chrome on a supported device or use the desktop GPU setup.");
-        aiEngineStatus.textContent = "Loading neural models. The first download can be around 300 MB; keep this page open on a stable connection.";
+        aiEngineStatus.textContent = cpuFallback
+          ? "No WebGPU/WebNN accelerator detected. Trying the library's CPU/WASM fallback. Face updates may take several seconds; keep this page open while it loads."
+          : "GPU acceleration is available. Loading neural models. The first download can be around 300 MB; keep this page open on a stable connection.";
+        if (cpuFallback) aiEngineStats.textContent += " · CPU/WASM mode can be very slow on phones.";
         const models = {
           landmarker:{url:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",sha256:KNOWN_SHA256.landmarker},
           swapperFp16:{url:"https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128_fp16.onnx",sha256:KNOWN_SHA256.swapperFp16},
@@ -1846,7 +1851,7 @@
         };
         candidateEngine = await createFaceSwap({models:models,backend:"auto",
           onProgress:({model,loaded,total})=>{if(!isCurrentStart())return;aiProgress.max=total||1;aiProgress.value=loaded;aiEngineStatus.textContent="Downloading/verifying "+model+" · "+Math.round(loaded/1000000)+" MB";},
-          onStats:({fps,inferMs,backend,latencyMs})=>{if(!isCurrentStart())return;const freshFps=Number.isFinite(fps)?Math.round(fps):"—";const inference=Number.isFinite(inferMs)?Math.round(inferMs)+" ms":"—";const latency=Number.isFinite(latencyMs)?" · "+Math.round(latencyMs)+" ms latency":"";aiEngineStats.textContent=String(backend||"GPU").toUpperCase()+" · "+freshFps+" fresh face swaps/s · "+inference+" inference"+latency+" · camera output stays at capture rate";},
+          onStats:({fps,inferMs,backend,latencyMs})=>{if(!isCurrentStart())return;const backendName=String(backend||"auto").toUpperCase();const freshFps=Number.isFinite(fps)?Math.round(fps):"—";const inference=Number.isFinite(inferMs)?Math.round(inferMs)+" ms":"—";const latency=Number.isFinite(latencyMs)?" · "+Math.round(latencyMs)+" ms latency":"";aiEngineStats.textContent=backendName+" · "+freshFps+" fresh face swaps/s · "+inference+" inference"+latency+" · camera output stays at capture rate";if(cpuFallback)aiEngineStatus.textContent="CPU/WASM face replacement is running. Measured update speed is shown below; slow updates are expected on this device.";},
           onLog:(message)=>console.info("[neural-face-swap]",message)
         });
         if (!isCurrentStart()) { try { candidateEngine.dispose(); } catch (_) {} candidateEngine = null; return; }
@@ -1878,7 +1883,7 @@
         neuralOutputVideo.srcObject = new MediaStream([neuralSwapTrack]);
         await withTimeout(neuralOutputVideo.play(), 15000, "The browser did not start playback for the neural output track.");
         if (!isCurrentStart()) return;
-        await waitForNeuralVideoFrame();
+        await waitForNeuralVideoFrame(cpuFallback ? 45000 : 15000);
         if (!isCurrentStart()) return;
         if (neuralSwapTrack.readyState !== "live" || neuralOutputVideo.readyState < 2 || !neuralOutputVideo.videoWidth) {
           throw new Error("The neural output track opened but did not produce a decoded video frame. The original camera is still available.");
@@ -1893,9 +1898,11 @@
         neuralSwapTrack.addEventListener("mute", () => {
           aiEngineStatus.textContent = "Neural output paused by the browser or GPU. The call remains connected; check device performance.";
         });
-        aiEngineStatus.textContent = activeCall
-          ? "Neural video frames confirmed. The existing call can now use the processed camera track."
-          : "Neural video frames confirmed. Enable Processed Camera Output or start a call to share it.";
+        aiEngineStatus.textContent = cpuFallback
+          ? "CPU/WASM face replacement produced a live video frame. Updates may be very slow; check the measured speed before using it in a call."
+          : activeCall
+            ? "Neural video frames confirmed. The existing call can now use the processed camera track."
+            : "Neural video frames confirmed. Enable Processed Camera Output or start a call to share it.";
         aiEngineStats.textContent += " · Processed video frame received.";
         stopAIButton.disabled = false; outputButton.disabled = false;
       } catch(error) {
