@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 
 APP_VERSION = "0.1.0"
 ENGINE_READY = os.getenv("FULL_BODY_ENGINE_READY", "false").lower() == "true"
+# Set true only when a concrete, tested GPU inference adapter is installed.
+INFERENCE_ADAPTER_AVAILABLE = False
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
@@ -59,15 +61,16 @@ async def health() -> dict:
 
 @app.get("/api/capabilities")
 async def capabilities() -> dict:
+    live_ready = ENGINE_READY and INFERENCE_ADAPTER_AVAILABLE
     return {
-        "full_body_live": ENGINE_READY,
-        "engine_status": "ready" if ENGINE_READY else "not_installed",
+        "full_body_live": live_ready,
+        "engine_status": ("ready" if live_ready else "configured_without_adapter" if ENGINE_READY else "not_installed"),
         "recorded_video": False,
         "transport": "WebRTC-compatible processed-video track (planned)",
         "stores_camera_frames": False,
         "note": (
-            "The inference engine is installed and configured."
-            if ENGINE_READY
+            "A tested inference adapter is installed and configured."
+            if live_ready
             else "This is setup scaffolding only. No face/body replacement is performed."
         ),
     }
@@ -84,7 +87,7 @@ async def create_session(
         raise HTTPException(status_code=403, detail="Consent from both people is required.")
     if not request.disclosure_enabled:
         raise HTTPException(status_code=403, detail="Visible AI-altered-video disclosure is required.")
-    if not ENGINE_READY:
+    if not (ENGINE_READY and INFERENCE_ADAPTER_AVAILABLE):
         return SessionResponse(
             session_token=secrets.token_urlsafe(24),
             status="engine_unavailable",
