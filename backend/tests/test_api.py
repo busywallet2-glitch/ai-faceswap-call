@@ -28,7 +28,8 @@ def test_capabilities_never_claim_engine_without_adapter(monkeypatch):
     monkeypatch.setattr(main, "ENGINE_READY", True)
     response = client.get("/api/capabilities")
     assert response.status_code == 200
-    assert response.json()["full_body_live"] is True
+    assert response.json()["full_body_live"] is False
+    assert response.json()["engine_status"] == "configured_without_adapter"
 
     # Even with the configuration flag set, session creation must not claim
     # processed video until a real inference adapter is connected.
