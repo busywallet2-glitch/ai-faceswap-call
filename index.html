@@ -443,7 +443,7 @@
   <section class="modules-grid" aria-label="Studio tools">
   <div class="panel ai-engine-panel">
     <div class="ai-engine-head"><div><span class="eyebrow">REAL AI PIPELINE</span><h2>Live AI Face Replacement</h2></div><span class="preview-tag">EXPERIMENTAL GPU</span></div>
-    <p class="hint">This trained identity-transfer model is the only face-replacement path. It aligns the authorized source identity to the live face and blends around facial edges and occlusions. The old triangle warp is disabled. The engine must produce a decoded live frame before the app reports that swapping is active; otherwise it keeps the original camera and reports the reason.</p>
+    <p class="hint">This neural identity-transfer model is the only face-replacement path. It tracks facial geometry, blends the generated face into the live frame, and uses foreground segmentation to help preserve hands and objects in front of the face. Camera video continues at its capture rate while the swapped face refreshes as fast as your device can process it. The old triangle warp is disabled. The engine must produce a decoded live frame before the app reports that swapping is active; otherwise it keeps the original camera and reports the reason.</p>
     <label><input id="aiConsent" type="checkbox"> I confirm I have permission to use the uploaded face and will disclose altered video to call participants.</label>
     <button id="startAIButton" type="button" disabled>Start Live AI Face Swap</button>
     <button id="stopAIButton" type="button" disabled>Stop Live AI Swap</button>
@@ -567,7 +567,7 @@
     <input type="file" id="faceFile" accept="image/*">
     <label for="faceAngleFiles">Optional: add up to two side-angle photos of the same person</label>
     <input type="file" id="faceAngleFiles" accept="image/*" multiple>
-    <p id="faceAngleStatus" class="hint" role="status">A front-facing photo is enough to start. Left/right angle photos help the AI keep the identity more consistent when you turn your head.</p>
+    <p id="faceAngleStatus" class="hint" role="status">A front-facing photo is enough to start. For more consistent head turns, add two clear photos of the same person: one turned slightly left and one slightly right (about a quarter-turn, with both eyes still visible). Keep face size, focus and lighting similar to the front photo.</p>
     <div id="faceAnglePreviews" class="face-angle-previews" aria-label="Selected side-angle photo previews"></div>
     <button id="clearFaceButton" type="button" disabled>Remove Uploaded Images</button>
     <img id="facePreview" alt="Uploaded face preview">
@@ -1817,7 +1817,7 @@
         };
         candidateEngine = await createFaceSwap({models:models,backend:"auto",
           onProgress:({model,loaded,total})=>{if(!isCurrentStart())return;aiProgress.max=total||1;aiProgress.value=loaded;aiEngineStatus.textContent="Downloading/verifying "+model+" · "+Math.round(loaded/1000000)+" MB";},
-          onStats:({fps,inferMs,backend,latencyMs})=>{if(!isCurrentStart())return;aiEngineStats.textContent=backend.toUpperCase()+" · "+Math.round(fps)+" output fps · "+Math.round(inferMs)+" ms inference · "+latencyMs+" ms latency";},
+          onStats:({fps,inferMs,backend,latencyMs})=>{if(!isCurrentStart())return;const freshFps=Number.isFinite(fps)?Math.round(fps):"—";const inference=Number.isFinite(inferMs)?Math.round(inferMs)+" ms":"—";const latency=Number.isFinite(latencyMs)?" · "+Math.round(latencyMs)+" ms latency":"";aiEngineStats.textContent=String(backend||"GPU").toUpperCase()+" · "+freshFps+" fresh face swaps/s · "+inference+" inference"+latency+" · camera output stays at capture rate";},
           onLog:(message)=>console.info("[neural-face-swap]",message)
         });
         if (!isCurrentStart()) { try { candidateEngine.dispose(); } catch (_) {} candidateEngine = null; return; }
@@ -1842,7 +1842,7 @@
         if (selectedFace.preview) selectedFace.preview.close();
         aiEngineStats.textContent = qualityNotes.length ? "Portrait quality warning: " + qualityNotes.join(", ") + ". Use sharp, evenly lit photos with the face clearly visible." : "Portrait quality check passed.";
         if (faceAngleImages.length) aiEngineStats.textContent += " · " + faceAngleImages.length + " extra angle view(s) loaded.";
-        neuralSwapTrack = neuralSwap.process(sessionStream.getVideoTracks()[0],{maxFps:24});
+        // Let the engine schedule inference at the fastest sustainable device rate.\n        // It drops stale frames and composites the latest face between fresh swaps.\n        neuralSwapTrack = neuralSwap.process(sessionStream.getVideoTracks()[0]);
         if (!neuralSwapTrack || neuralSwapTrack.kind !== "video" || neuralSwapTrack.readyState !== "live") {
           throw new Error("The neural engine did not return a live video track.");
         }
