@@ -1,4 +1,10 @@
+from pathlib import Path
+import sys
+
 from fastapi.testclient import TestClient
+
+# Make the backend package importable when pytest runs from backend/.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import main
 
