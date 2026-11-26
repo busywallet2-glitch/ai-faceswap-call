@@ -1830,7 +1830,25 @@
       neuralSwapStarting = true; startAIButton.disabled = true; aiProgress.hidden = false; aiProgress.value = 0;
       aiEngineStatus.textContent = "Checking browser GPU support…";
       try {
-        if (!neuralSwapModule) neuralSwapModule = await import("https://esm.sh/browser-inswapper@0.1.0");
+        if (!neuralSwapModule) {
+          const moduleUrls = [
+            "https://cdn.jsdelivr.net/npm/browser-inswapper@0.1.0/+esm",
+            "https://esm.sh/browser-inswapper@0.1.0"
+          ];
+          let importError = null;
+          for (const moduleUrl of moduleUrls) {
+            try {
+              neuralSwapModule = await import(moduleUrl);
+              break;
+            } catch (error) {
+              importError = error;
+              console.warn("Face-swap module source failed:", moduleUrl, error);
+            }
+          }
+          if (!neuralSwapModule) {
+            throw new Error("Could not load the face-swap library from either CDN. Check your connection or try again later. " + (importError?.message || ""));
+          }
+        }
         if (!isCurrentStart()) return;
         const createFaceSwap = neuralSwapModule.createFaceSwap, KNOWN_SHA256 = neuralSwapModule.KNOWN_SHA256, probe = neuralSwapModule.probe;
         const caps = await probe();
