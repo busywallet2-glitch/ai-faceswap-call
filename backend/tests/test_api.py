@@ -78,3 +78,64 @@ def test_valid_consent_does_not_fake_engine_availability(monkeypatch):
     assert body["status"] == "engine_unavailable"
     assert body["processed_video_available"] is False
     assert body["session_token"]
+
+
+from app.engine import EngineInfo, validate_engine
+
+
+class FakeTemporalEngine:
+    info = EngineInfo(
+        name="test-engine",
+        version="0.0-test",
+        device="cpu",
+        supports_temporal_video=True,
+        supports_full_body=True,
+    )
+
+    async def initialize(self):
+        pass
+
+    async def process_frame(self, *, session_id, frame_jpeg, timestamp_ms):
+        return frame_jpeg
+
+    async def close_session(self, session_id):
+        pass
+
+    async def shutdown(self):
+        pass
+
+
+def test_adapter_contract_accepts_temporal_full_body_engine():
+    info = validate_engine(FakeTemporalEngine())
+    assert info.supports_full_body is True
+    assert info.supports_temporal_video is True
+
+
+def test_adapter_contract_rejects_face_only_engine():
+    engine = FakeTemporalEngine()
+    engine.info = EngineInfo(
+        name="face-only",
+        version="1",
+        device="cpu",
+        supports_temporal_video=True,
+        supports_full_body=False,
+    )
+    import pytest
+
+    with pytest.raises(ValueError, match="full-body"):
+        validate_engine(engine)
+
+
+def test_adapter_contract_rejects_non_temporal_engine():
+    engine = FakeTemporalEngine()
+    engine.info = EngineInfo(
+        name="single-frame",
+        version="1",
+        device="cpu",
+        supports_temporal_video=False,
+        supports_full_body=True,
+    )
+    import pytest
+
+    with pytest.raises(ValueError, match="temporal"):
+        validate_engine(engine)
