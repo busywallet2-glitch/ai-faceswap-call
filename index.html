@@ -382,7 +382,93 @@
       .install-app-button { width: 100%; }
     }
 
-  </style>
+  
+    /* Native-feeling video call interface */
+    body {
+      max-width: 1180px; min-height:100vh; padding:16px clamp(12px,2vw,28px) 36px;
+      background:#090b11; 
+    }
+    .topbar { margin-bottom:16px; padding:2px 0 13px; }
+    .brand-mark { border-radius:50%; width:38px; height:38px; }
+    .brand-name { letter-spacing:.04em; font-size:15px; }
+    .brand-sub { letter-spacing:.02em; }
+    .topbar-status { background:#111722; }
+    .hero-copy { margin:0 0 14px; max-width:none; }
+    .hero-copy .eyebrow { display:none; }
+    .hero-copy h1 { font-size:clamp(1.35rem,3vw,1.8rem); letter-spacing:-.03em; margin:0 0 3px; }
+    .hero-copy > p { font-size:12px; color:#8e99ad; }
+    .workspace-grid { display:block; margin-bottom:12px; }
+    .preview-column { padding:10px; border-radius:18px; background:#10151f; }
+    .preview-heading { margin:0 2px 9px; }
+    .preview-heading h2 { font-size:13px; font-weight:650; }
+    .preview-tag { font-size:9px; }
+    .camera-box,.camera-box.landscape {
+      width:100%; max-width:none; max-height:none; aspect-ratio:16/9;
+      border:0; border-radius:13px; background:#030509; box-shadow:none;
+    }
+    #camera,#overlay { object-fit:cover; }
+    #cameraPlaceholder { background:radial-gradient(ellipse at center, #182234, #080b12 72%); }
+    #cameraPlaceholder::before { content:"◉"; font-size:32px; }
+    #remotePreview {
+      display:none; position:absolute; inset:0; z-index:2; width:100%!important; height:100%!important;
+      max-height:none!important; margin:0!important; border:0!important; border-radius:0!important;
+      object-fit:contain; background:#030509;
+    }
+    .camera-box.remote-active #remotePreview { display:block!important; }
+    .camera-box.remote-active #camera {
+      position:absolute; z-index:4; right:14px; bottom:14px; width:22%; height:30%;
+      border:2px solid rgba(255,255,255,.85); border-radius:12px; object-fit:cover;
+      box-shadow:0 8px 24px rgba(0,0,0,.5);
+    }
+    .camera-box.remote-active #overlay { display:none; }
+    .camera-controls { display:none; }
+    .call-dock {
+      display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:9px;
+      margin:12px 0 20px; padding:13px; border:1px solid var(--line);
+      border-radius:18px; background:#111722; box-shadow:0 12px 32px rgba(0,0,0,.2);
+    }
+    .call-dock .call-id-group { display:flex; flex:1 1 230px; min-width:0; gap:7px; }
+    .call-dock .call-id-group input { min-width:0; flex:1; min-height:42px; }
+    .call-dock button { min-width:44px; min-height:44px; margin:0; border-radius:50px; padding:10px 16px; }
+    .call-dock #connectButton { border-radius:12px; }
+    .call-dock #hangupButton { background:#c63d52; color:#fff; border-color:#c63d52; }
+    .call-dock #muteButton,#cameraToggleButton { background:#273143; border-color:#354158; box-shadow:none; }
+    .call-dock #callStatus { flex:1 0 100%; text-align:center; margin:0; font-size:11px; }
+    .modules-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .modules-grid > .panel { padding:17px; border-radius:16px; }
+    .modules-grid > .panel:nth-child(3) { grid-column:1/-1; }
+    .modules-grid > .panel:nth-child(3) > p:first-of-type { display:none; }
+    .modules-grid > .panel:nth-child(3) > h2 { font-size:14px; }
+    .modules-grid > .panel:nth-child(3) > .panel { display:none; }
+    .modules-grid > .panel:nth-child(3) > h3,
+    .modules-grid > .panel:nth-child(3) > label,
+    .modules-grid > .panel:nth-child(3) > select,
+    .modules-grid > .panel:nth-child(3) > .hint { display:none; }
+    .modules-grid > .panel:nth-child(3) #remotePreview { display:none!important; }
+    .ai-engine-panel { border-color:rgba(167,139,250,.18); }
+    .ai-engine-panel .hint { font-size:11px; }
+    #startAIButton,#stopAIButton { width:auto; min-width:180px; }
+    #facePreview { width:72px; height:72px; border-radius:50%; }
+    #engineConsole { margin-top:14px!important; }
+    footer { text-align:center; }
+    @media(max-width:650px) {
+      body { padding:10px 10px 28px; }
+      .topbar { margin-bottom:12px; }
+      .topbar-status { margin-left:auto; }
+      .install-app-button { width:auto; }
+      .hero-copy { margin-bottom:10px; }
+      .preview-column { padding:8px; }
+      .camera-box,.camera-box.landscape { aspect-ratio:4/3; }
+      .call-dock { gap:7px; padding:10px; margin:9px 0 14px; }
+      .call-dock .call-id-group { flex-basis:100%; }
+      .call-dock button { flex:1 1 auto; min-width:0; font-size:11px; padding:9px 12px; }
+      .call-dock #connectButton { flex:1 1 100%; }
+      .modules-grid { grid-template-columns:1fr; }
+      .modules-grid > .panel:nth-child(3) { grid-column:auto; }
+      .camera-box.remote-active #camera { width:29%; height:28%; }
+    }
+
+</style>
 </head>
 <body>
   <header class="topbar">
@@ -2608,6 +2694,46 @@
       try { videoLandmarker?.close(); } catch (_) {}
       try { imageLandmarker?.close(); } catch (_) {}
     });
+  </script>
+
+
+  <script>
+    (() => {
+      const stage = document.getElementById("cameraStage");
+      const callPanel = document.querySelector(".modules-grid > .panel:nth-child(3)");
+      const remoteVideo = document.getElementById("remotePreview");
+      if (!stage || !callPanel || !remoteVideo) return;
+      stage.appendChild(remoteVideo);
+      const dock = document.createElement("section");
+      dock.className = "call-dock";
+      dock.setAttribute("aria-label","Video call controls");
+      const idGroup = document.createElement("div");
+      idGroup.className = "call-id-group";
+      const callIdLabel = document.createElement("label");
+      callIdLabel.className = "sr-only";
+      callIdLabel.htmlFor = "myPeerId";
+      callIdLabel.textContent = "Your call ID";
+      idGroup.append(callIdLabel, document.getElementById("myPeerId"));
+      const peerGroup = document.createElement("div");
+      peerGroup.className = "call-id-group";
+      const peerLabel = document.createElement("label");
+      peerLabel.className = "sr-only";
+      peerLabel.htmlFor = "remotePeerId";
+      peerLabel.textContent = "Other person's call ID";
+      peerGroup.append(peerLabel, document.getElementById("remotePeerId"));
+      const controls = ["connectButton","callButton","answerButton","declineButton","hangupButton","muteButton","cameraToggleButton"];
+      dock.append(idGroup,peerGroup,...controls.map(id=>document.getElementById(id)),document.getElementById("callStatus"));
+      document.querySelector(".workspace-grid").after(dock);
+      document.querySelector(".brand-sub").textContent = "PRIVATE VIDEO CALL";
+      document.querySelector(".topbar-status").innerHTML = '<span class="status-dot"></span> Ready to connect';
+      document.querySelector(".hero-copy h1").textContent = "Video Call";
+      document.querySelector(".hero-copy > p").textContent = "Connect with someone privately. Turn on your camera, apply your authorized face effect, and start your call.";
+      document.querySelector(".preview-heading h2").textContent = "Your video";
+      document.querySelector(".preview-tag").textContent = "CAMERA PREVIEW";
+      remoteVideo.addEventListener("loadedmetadata", () => stage.classList.add("remote-active"));
+      remoteVideo.addEventListener("emptied", () => stage.classList.remove("remote-active"));
+      remoteVideo.addEventListener("error", () => stage.classList.remove("remote-active"));
+    })();
   </script>
 
   <footer style="padding:24px 12px;color:#aab6ce;font-size:13px"><a href="./privacy-policy.html" style="color:#83e4df">Privacy Policy</a></footer>
