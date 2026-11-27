@@ -431,6 +431,10 @@
     .call-dock .call-id-group input { min-width:0; flex:1; min-height:42px; }
     .call-dock button { min-width:44px; min-height:44px; margin:0; border-radius:50px; padding:10px 16px; }
     .call-dock #connectButton { border-radius:12px; }
+    .call-dock .dock-start-camera { background:#258b73; color:#fff; border-color:#258b73; }
+    .call-dock .dock-stop-camera { background:#394458; color:#fff; border-color:#394458; }
+    .call-dock .dock-start-camera:disabled,.call-dock .dock-stop-camera:disabled { opacity:.45; }
+
     .call-dock #hangupButton { background:#c63d52; color:#fff; border-color:#c63d52; }
     .call-dock #muteButton,#cameraToggleButton { background:#273143; border-color:#354158; box-shadow:none; }
     .call-dock #callStatus { flex:1 0 100%; text-align:center; margin:0; font-size:11px; }
@@ -2720,7 +2724,11 @@
       peerLabel.textContent = "Other person's call ID";
       peerGroup.append(peerLabel, document.getElementById("remotePeerId"));
       const controls = ["connectButton","callButton","answerButton","declineButton","hangupButton","muteButton","cameraToggleButton"];
-      dock.append(idGroup,peerGroup,...controls.map(id=>document.getElementById(id)),document.getElementById("callStatus"));
+      const startCameraButton = document.getElementById("startButton");
+      const stopCameraButton = document.getElementById("stopButton");
+      startCameraButton.classList.add("dock-start-camera");
+      stopCameraButton.classList.add("dock-stop-camera");
+      dock.append(idGroup,peerGroup,startCameraButton,stopCameraButton,...controls.map(id=>document.getElementById(id)),document.getElementById("callStatus"));
       document.querySelector(".workspace-grid").after(dock);
       const settings = document.createElement("details");
       settings.className = "call-settings";
