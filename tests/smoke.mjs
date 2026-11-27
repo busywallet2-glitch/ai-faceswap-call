@@ -50,6 +50,18 @@ assert.ok(trackerLoaderSource.includes("if (!trackerLoadPromise)"),
 assert.ok(trackerLoaderSource.includes("if (trackerLoadPromise === pendingLoad) trackerLoadPromise = null;"),
   "A failed tracker load must clear its own promise so the next camera start can retry.");
 
+const inlineScriptBlocks = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+  .filter(match => !/\bsrc\s*=/.test(match[1]));
+assert.ok(inlineScriptBlocks.length >= 3, "All application inline scripts must be available for syntax checks.");
+for (const [index, match] of inlineScriptBlocks.entries()) {
+  const inlinePath = join(tmpdir(), `busywallet-inline-${process.pid}-${index}.mjs`);
+  writeFileSync(inlinePath, match[2], "utf8");
+  const inlineCheck = spawnSync(process.execPath, ["--check", inlinePath], { encoding: "utf8" });
+  unlinkSync(inlinePath);
+  assert.equal(inlineCheck.status, 0,
+    `Inline script ${index + 1} must parse as valid JavaScript.\\n${inlineCheck.stderr || inlineCheck.stdout}`);
+}
+
 const moduleScript = html.match(/<script type="module">([\s\S]*?)<\/script>/);
 assert.ok(moduleScript, "The app must include its browser module script.");
 const syntaxPath = join(tmpdir(), `busywallet-app-syntax-${process.pid}.mjs`);
