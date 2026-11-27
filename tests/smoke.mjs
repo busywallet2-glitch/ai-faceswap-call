@@ -301,7 +301,8 @@ const required = [
   "id=\"startAIButton\"",
   "id=\"stopAIButton\"",
   "browser-inswapper@0.1.0",
-  "const caps = await probe()",
+  "webgpu: { available: webgpuAvailable }",
+  "webnn: Boolean(navigator.ml)",
   "cpuFallback = !acceleratedBackendAvailable",
   "Trying the library's CPU/WASM fallback",
   "waitForNeuralVideoFrame(cpuFallback ? 45000 : 15000)",
@@ -366,6 +367,10 @@ for (const item of required) {
   assert.ok(html.includes(item), `Missing required app feature: ${item}`);
 }
 
+assert.ok(!html.includes("neuralSwapModule.probe") && !html.includes("typeof loadedModule.probe"),
+  "The browser face-swap integration must not require an undocumented probe export.");
+assert.ok(html.includes("startCameraFallbackButton"),
+  "A visible fallback Start Camera control must remain available if call-dock relocation fails.");
 assert.ok(
   /!permission\.checked/.test(html),
   "Face alignment must be blocked until permission is confirmed."
