@@ -56,6 +56,7 @@ A mobile-first, consent-first browser studio with a premium interface, experimen
 This is an **experimental prototype, not a finished or production-ready face-swap or calling product**.
 
 - The legacy landmark/triangle warp is disabled in the live workspace because it distorts faces; it is not the neural replacement and should not be re-enabled as a substitute for identity transfer.
+- The browser-inswapper library is licensed under PolyForm Noncommercial 1.0.0, and the InsightFace model weights have separate non-commercial research restrictions. Do not use this prototype commercially unless you obtain the required permissions and licences.
 - The neural replacement is experimental and not guaranteed photorealistic. It depends on source-photo quality, pose, lighting, browser support, and GPU performance. The first run downloads several hundred MB of model files. CPU/WASM fallback is not suitable for live performance on most devices.
 - The neural model has not been end-to-end verified on the user's Android phone or across supported desktop GPUs. GitHub source checks do not prove live inference works in a particular browser.
 - Face replacement still affects the face only. The pose and segmentation overlays track/visualize the visible person but do not replace the whole body, clothing, or identity; the framing guide is only a positioning aid.
