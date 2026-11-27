@@ -427,6 +427,8 @@
       margin:12px 0 20px; padding:13px; border:1px solid var(--line);
       border-radius:18px; background:#111722; box-shadow:0 12px 32px rgba(0,0,0,.2);
     }
+    .start-camera-fallback { display:block; width:100%; max-width:560px; min-height:52px; margin:12px auto; background:linear-gradient(120deg,#258b73,#176c65); border-color:rgba(116,224,180,.35); font-size:14px; }
+    .start-camera-fallback[hidden] { display:none!important; }
     .call-dock .call-id-group { display:flex; flex:1 1 230px; min-width:0; gap:7px; }
     .call-dock .call-id-group input { min-width:0; flex:1; min-height:42px; }
     .call-dock button { min-width:44px; min-height:44px; margin:0; border-radius:50px; padding:10px 16px; }
@@ -504,6 +506,7 @@
       <span class="framing-guide-label">Keep your full body inside this outline</span>
     </div>
   </div>
+      <button id="startCameraFallbackButton" class="start-camera-fallback" type="button">Start Camera</button>
 
     </div>
     <aside class="camera-controls" aria-label="Camera settings">
@@ -1132,7 +1135,11 @@
     }
 
     function renderCameraOnly() {
-      if (!cameraStream || video.readyState < 2) return;
+      if (!cameraStream) { animationFrame = null; return; }
+      if (video.readyState < 2) {
+        animationFrame = requestAnimationFrame(renderCameraOnly);
+        return;
+      }
       const source = getProcessedCanvasSource();
       ctx.setTransform(1,0,0,1,0,0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1932,8 +1939,7 @@
             try {
               const loadedModule = await import(moduleUrl);
               if (typeof loadedModule.createFaceSwap !== "function" ||
-                  typeof loadedModule.probe !== "function" ||
-                  !loadedModule.KNOWN_SHA256) {
+                  !loadedModule.KNOWN_SHA256 || typeof loadedModule.KNOWN_SHA256 !== "object") {
                 throw new Error("The downloaded module did not expose the expected face-swap API.");
               }
               neuralSwapModule = loadedModule;
@@ -1952,8 +1958,17 @@
           }
         }
         if (!isCurrentStart()) return;
-        const createFaceSwap = neuralSwapModule.createFaceSwap, KNOWN_SHA256 = neuralSwapModule.KNOWN_SHA256, probe = neuralSwapModule.probe;
-        const caps = await probe();
+        const createFaceSwap = neuralSwapModule.createFaceSwap, KNOWN_SHA256 = neuralSwapModule.KNOWN_SHA256;
+        let webgpuAvailable = false;
+        try {
+          webgpuAvailable = Boolean(navigator.gpu && await navigator.gpu.requestAdapter());
+        } catch (gpuProbeError) {
+          console.info("WebGPU adapter is unavailable; checking other supported backends.", gpuProbeError);
+        }
+        const caps = {
+          webgpu: { available: webgpuAvailable },
+          webnn: Boolean(navigator.ml)
+        };
         if (!isCurrentStart()) return;
         const acceleratedBackendAvailable = Boolean((caps.webgpu && caps.webgpu.available) || caps.webnn);
         cpuFallback = !acceleratedBackendAvailable;
@@ -2718,7 +2733,12 @@
       const stage = document.getElementById("cameraStage");
       const callPanel = document.querySelector(".modules-grid > .panel:nth-child(3)");
       const remoteVideo = document.getElementById("remotePreview");
-      if (!stage || !callPanel || !remoteVideo) return;
+      const fallbackStartButton = document.getElementById("startCameraFallbackButton");
+      const primaryStartButton = document.getElementById("startButton");
+      if (fallbackStartButton && primaryStartButton) {
+        fallbackStartButton.addEventListener("click", () => primaryStartButton.click());
+      }
+      if (!stage || !remoteVideo) return;
       stage.appendChild(remoteVideo);
       const dock = document.createElement("section");
       dock.className = "call-dock";
@@ -2743,21 +2763,32 @@
       startCameraButton.classList.add("dock-start-camera");
       stopCameraButton.classList.add("dock-stop-camera");
       dock.append(idGroup,peerGroup,startCameraButton,stopCameraButton,...controls.map(id=>document.getElementById(id)),document.getElementById("callStatus"));
-      document.querySelector(".workspace-grid").after(dock);
-      const settings = document.createElement("details");
-      settings.className = "call-settings";
-      const summary = document.createElement("summary");
-      summary.textContent = "Call settings, voice and captions";
-      settings.append(summary);
-      while (callPanel.children.length > 1) settings.append(callPanel.children[1]);
-      callPanel.append(settings);
-      callPanel.querySelector("h2").textContent = "Call settings";
-      document.querySelector(".brand-sub").textContent = "PRIVATE VIDEO CALL";
-      document.querySelector(".topbar-status").innerHTML = '<span class="status-dot"></span> Ready to connect';
-      document.querySelector(".hero-copy h1").textContent = "Video Call";
-      document.querySelector(".hero-copy > p").textContent = "Connect with someone privately. Turn on your camera, apply your authorized face effect, and start your call.";
-      document.querySelector(".preview-heading h2").textContent = "Your video";
-      document.querySelector(".preview-tag").textContent = "CAMERA PREVIEW";
+      const workspace = document.querySelector(".workspace-grid");
+      if (workspace) workspace.after(dock);
+      if (fallbackStartButton) fallbackStartButton.hidden = true;
+      if (callPanel) {
+        const settings = document.createElement("details");
+        settings.className = "call-settings";
+        const summary = document.createElement("summary");
+        summary.textContent = "Call settings, voice and captions";
+        settings.append(summary);
+        while (callPanel.children.length > 1) settings.append(callPanel.children[1]);
+        callPanel.append(settings);
+        const callPanelHeading = callPanel.querySelector("h2");
+        if (callPanelHeading) callPanelHeading.textContent = "Call settings";
+      }
+      const brandSub = document.querySelector(".brand-sub");
+      const topbarStatus = document.querySelector(".topbar-status");
+      const heroTitle = document.querySelector(".hero-copy h1");
+      const heroDescription = document.querySelector(".hero-copy > p");
+      const previewTitle = document.querySelector(".preview-heading h2");
+      const previewTag = document.querySelector(".preview-tag");
+      if (brandSub) brandSub.textContent = "PRIVATE VIDEO CALL";
+      if (topbarStatus) topbarStatus.innerHTML = '<span class="status-dot"></span> Ready to connect';
+      if (heroTitle) heroTitle.textContent = "Video Call";
+      if (heroDescription) heroDescription.textContent = "Connect with someone privately. Turn on your camera, apply your authorized face effect, and start your call.";
+      if (previewTitle) previewTitle.textContent = "Your video";
+      if (previewTag) previewTag.textContent = "CAMERA PREVIEW";
       remoteVideo.addEventListener("loadedmetadata", () => stage.classList.add("remote-active"));
       remoteVideo.addEventListener("emptied", () => stage.classList.remove("remote-active"));
       remoteVideo.addEventListener("error", () => stage.classList.remove("remote-active"));
