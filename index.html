@@ -1919,22 +1919,36 @@
       aiEngineStatus.textContent = "Checking browser GPU support…";
       try {
         if (!neuralSwapModule) {
+          // Try independent ESM delivery networks. A single blocked CDN must not
+          // prevent the browser engine from starting when another host is reachable.
           const moduleUrls = [
             "https://cdn.jsdelivr.net/npm/browser-inswapper@0.1.0/+esm",
-            "https://esm.sh/browser-inswapper@0.1.0"
+            "https://unpkg.com/browser-inswapper@0.1.0/dist/index.js?module",
+            "https://esm.sh/browser-inswapper@0.1.0",
+            "https://cdn.skypack.dev/browser-inswapper@0.1.0"
           ];
-          let importError = null;
+          const moduleErrors = [];
           for (const moduleUrl of moduleUrls) {
             try {
-              neuralSwapModule = await import(moduleUrl);
+              const loadedModule = await import(moduleUrl);
+              if (typeof loadedModule.createFaceSwap !== "function" ||
+                  typeof loadedModule.probe !== "function" ||
+                  !loadedModule.KNOWN_SHA256) {
+                throw new Error("The downloaded module did not expose the expected face-swap API.");
+              }
+              neuralSwapModule = loadedModule;
               break;
             } catch (error) {
-              importError = error;
+              moduleErrors.push(moduleUrl + ": " + (error?.message || String(error)));
               console.warn("Face-swap module source failed:", moduleUrl, error);
             }
           }
           if (!neuralSwapModule) {
-            throw new Error("Could not load the face-swap library from either CDN. Check your connection or try again later. " + (importError?.message || ""));
+            throw new Error(
+              "The face-swap library could not be loaded from any of the four module hosts. " +
+              "This is a network/CDN loading failure, before GPU or model startup. " +
+              moduleErrors.join(" | ")
+            );
           }
         }
         if (!isCurrentStart()) return;
