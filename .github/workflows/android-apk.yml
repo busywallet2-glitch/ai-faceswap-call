@@ -17,7 +17,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -25,8 +24,13 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install Android SDK
+      - name: Set up Android SDK command-line tools
         uses: android-actions/setup-android@v3
+
+      - name: Install required Android SDK packages
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          yes | sdkmanager --licenses
 
       - name: Install JavaScript dependencies
         run: npm install
