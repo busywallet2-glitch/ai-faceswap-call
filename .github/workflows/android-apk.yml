@@ -62,7 +62,7 @@ jobs:
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           source = manifest.read_text(encoding='utf-8')
-          match = re.search(r'<manifest\\b[^>]*>', source)
+          match = re.search(r'<manifest\b[^>]*>', source)
           if match is None:
               raise SystemExit("Android manifest opening tag was not found.")
 
@@ -78,7 +78,7 @@ jobs:
               if f'android:name="{permission}"' not in source
           ]
           if missing:
-              insertion = "\\n" + "\\n".join(missing) + "\\n"
+              insertion = "\n" + "\n".join(missing) + "\n"
               source = source[:match.end()] + insertion + source[match.end():]
               manifest.write_text(source, encoding='utf-8')
           PY
